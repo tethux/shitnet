@@ -38,8 +38,8 @@ export class EthernetFrameView {
 
     [[nodiscard]]
     fn etherType() const -> EtherType {
-        const auto hi = std::to_integer<std::uint16_t>(bytes_[12]);
-        const auto lo = std::to_integer<std::uint16_t>(bytes_[13]);
+        const let hi = std::to_integer<std::uint16_t>(bytes_[12]);
+        const let lo = std::to_integer<std::uint16_t>(bytes_[13]);
         return static_cast<EtherType>((hi << 8) | lo);
     }
 

@@ -6,6 +6,7 @@
 #include <deque>
 #include <span>
 #include <utility>
+#include <vector>
 
 import shitnet.arp;
 import shitnet.frame;
@@ -32,16 +33,17 @@ struct shitnet {
                 std::byte{2},
             },
     };
+    std::vector<ArpEntry> arp_table;
     std::deque<Frame> tx;
 };
 
 static fn make_arp_reply(const shitnet &net, const ArpPacketView &req)
     -> Frame {
     Frame reply{42};
-    auto bytes = reply.bytes();
+    let bytes = reply.bytes();
 
-    const auto req_mac = req.senderMac();
-    const auto req_ip = req.senderIp();
+    const let req_mac = req.senderMac();
+    const let req_ip = req.senderIp();
 
     // ethernet dst
     for (std::size_t i = 0; i < 6; ++i) {
@@ -106,49 +108,38 @@ cfn shitnet_destroy(shitnet *instance) -> void {
     }
 }
 
-cfn shitnet_receive(shitnet *instance, const uint8_t *data, size_t len) -> int {
-    try {
-        if (instance == nullptr || data == nullptr || len < 14) {
-            return -1;
-        }
-
-        const auto bytes = std::span{
-            reinterpret_cast<const std::byte *>(data),
-            len,
-        };
-        const EthernetFrameView frame{bytes};
-
-        if (frame.etherType() != EtherType::arp) {
-            return 0;
-        }
-
-        if (frame.payload().size() < 28) {
-            return -2;
-        }
-
-        const ArpPacketView arp{frame.payload()};
-
-        if (arp.operation() != ArpOperation::request) {
-            return 0;
-        }
-
-        if (arp.targetIp() != instance->ip) {
-            return 0;
-        }
-
-        auto reply = make_arp_reply(*instance, arp);
-        instance->tx.push_back(std::move(reply));
-        return 1;
-    } catch (...) {
-        return -1;
-    }
-}
-
 cfn shitnet_tx_size(const shitnet *instance) -> size_t {
     if (instance == nullptr)
         return 0;
 
     return instance->tx.size();
+}
+
+cfn shitnet_arp_lookup(const shitnet *instance, const uint8_t ip[4],
+                       uint8_t mac[6]) -> int {
+    try {
+        if (instance == nullptr || ip == nullptr || mac == nullptr)
+            return -1;
+
+        IPv4Address address{};
+
+        for (std::size_t i = 0; i < address.bytes.size(); ++i)
+            address.bytes[i] = std::byte{ip[i]};
+
+        for (const let &entry : instance->arp_table) {
+            if (entry.ip != address)
+                continue;
+
+            for (std::size_t i = 0; i < entry.mac.bytes.size(); ++i)
+                mac[i] = std::to_integer<std::uint8_t>(entry.mac.bytes[i]);
+
+            return 1;
+        }
+
+        return 0;
+    } catch (...) {
+        return -1;
+    }
 }
 
 cfn shitnet_poll_tx(shitnet *instance, uint8_t *buffer, size_t buffer_size,
@@ -162,8 +153,8 @@ cfn shitnet_poll_tx(shitnet *instance, uint8_t *buffer, size_t buffer_size,
             return 0;
         }
 
-        const auto &frame = instance->tx.front();
-        const auto bytes = frame.bytes();
+        const let &frame = instance->tx.front();
+        const let bytes = frame.bytes();
 
         if (buffer_size < bytes.size()) {
             return -2;
@@ -177,6 +168,91 @@ cfn shitnet_poll_tx(shitnet *instance, uint8_t *buffer, size_t buffer_size,
         instance->tx.pop_front();
         return 1;
 
+    } catch (...) {
+        return -1;
+    }
+}
+
+static fn learn_arp(shitnet &net, IPv4Address ip, MacAddress mac) -> void {
+    for (let &entry : net.arp_table) {
+        if (entry.ip == ip) {
+            entry.mac = mac;
+            return;
+        }
+    }
+
+    net.arp_table.push_back(ArpEntry{
+        .ip = ip,
+        .mac = mac,
+    });
+}
+
+static fn handle_arp(shitnet &net, ArpPacket packet) -> int {
+    return match(std::move(packet))(
+        case_(ArpRequest, req) {
+            if (req.packet.targetIp() != net.ip) {
+                return 0;
+            }
+
+            let reply = make_arp_reply(net, req.packet);
+            net.tx.push_back(std::move(reply));
+
+            return 1;
+        },
+
+        case_(ArpReply, reply) {
+            (void)reply;
+
+            learn_arp(net, reply.packet.senderIp(), reply.packet.senderMac());
+
+            return 0;
+        },
+
+        case_(UnsupportedArpHardware, bad) {
+            (void)bad;
+            return 0;
+        },
+
+        case_(UnsupportedArpProtocol, bad) {
+            (void)bad;
+            return 0;
+        },
+
+        case_(InvalidArpAddressLengths, bad) {
+            (void)bad;
+            return -2;
+        },
+
+        case_(UnknownArpOperation, bad) {
+            (void)bad;
+            return 0;
+        });
+}
+
+cfn shitnet_receive(shitnet *instance, const uint8_t *data, size_t len) -> int {
+    try {
+        if (instance == nullptr || data == nullptr || len < 14) {
+            return -1;
+        }
+
+        const let bytes = std::span{
+            reinterpret_cast<const std::byte *>(data),
+            len,
+        };
+
+        const EthernetFrameView frame{bytes};
+
+        if (frame.etherType() != EtherType::arp) {
+            return 0;
+        }
+
+        if (frame.payload().size() < 28) {
+            return -2;
+        }
+
+        const ArpPacketView arp{frame.payload()};
+
+        return handle_arp(*instance, classifyArp(arp));
     } catch (...) {
         return -1;
     }

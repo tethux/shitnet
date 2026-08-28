@@ -14,8 +14,8 @@ description = "run the scaffold test"
 run = "xmake build -y shitnet-tests && xmake run shitnet-tests"
 
 [tasks.run]
-description = "run the playground"
-run = "xmake build -y shitnet-playground && xmake run shitnet-playground"
+description = "run the CLI"
+run = "xmake build -y shitnet-cli && xmake run shitnet-cli"
 
 [tasks.compiledb]
 description = "generate compile_commands.json with xmake"
@@ -23,7 +23,7 @@ run = "xmake build -a -y && xmake project -k compile_commands --lsp=clangd"
 
 [tasks.format]
 description = "format C and C++ interfaces and sources"
-run = "find src modules include tests playground -type f \\( -name '*.cpp' -o -name '*.cppm' -o -name '*.h' \\) -print0 | xargs -0 clang-format -i"
+run = "find src modules include tests cli -type f \\( -name '*.cpp' -o -name '*.cppm' -o -name '*.h' \\) -print0 | xargs -0 clang-format -i"
 
 [tasks.clean]
 description = "remove generated build files"

@@ -14,6 +14,8 @@ shitnet *shitnet_create(void);
 void shitnet_destroy(shitnet *instance);
 int shitnet_receive(shitnet *instance, const uint8_t *data, size_t len);
 size_t shitnet_tx_size(const shitnet *instance);
+int shitnet_arp_lookup(const shitnet *instance, const uint8_t ip[4],
+                       uint8_t mac[6]);
 
 int shitnet_poll_tx(shitnet *instance, uint8_t *buffer, size_t buffer_size,
                     size_t *written);
