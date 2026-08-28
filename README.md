@@ -2,8 +2,9 @@
 
 bla bla bal codex yipp yapp, i am just goofing arround with cpp and its surprisingly nice to use
 
-A small C++23 userspace network stack. It currently receives, classifies, and
-replies to ARP packets, and learns sender addresses from ARP replies.
+A small C++23 userspace network stack. It classifies Ethernet, ARP, IPv4, and
+ICMP packets, replies to ARP requests and ICMP echo requests, and maintains a
+small ARP table.
 
 ## Build
 
@@ -20,26 +21,31 @@ For an optimized build:
 mise run build
 ```
 
-## CLI
+## Commands
 
-Build the CLI once, then use xmake to run its ARP scenarios:
+The CLI is a typed multicall built with the local framework in `cli/framework`.
+Running it without a command prints the generated menu:
 
 ```sh
-xmake build -y shitnet-cli
-xmake run shitnet-cli arp request 2
+mise run run --
 ```
 
-A request for the stack's `10.0.0.2` address produces one 42-byte ARP reply.
-A request for another address produces no outgoing frame:
+Send an ARP request to the stack's `10.0.0.2` address:
 
 ```sh
-xmake run shitnet-cli arp request 67
+mise run run -- arp-request --target 2
 ```
 
-Send an ARP reply and verify that its sender was learned:
+This produces one 42-byte ARP reply. Another target produces no outgoing frame:
 
 ```sh
-xmake run shitnet-cli arp learn
+mise run run -- arp-request --target 67
+```
+
+Send an ARP reply and verify that its sender is learned:
+
+```sh
+mise run run -- arp-learn
 # 10.0.0.1 -> aa:bb:cc:dd:ee:ff
 ```
 
@@ -47,15 +53,29 @@ The remaining commands exercise reply handling and invalid or unsupported ARP
 fields:
 
 ```sh
-xmake run shitnet-cli arp reply
-xmake run shitnet-cli arp bad-hardware
-xmake run shitnet-cli arp bad-protocol
-xmake run shitnet-cli arp bad-length
-xmake run shitnet-cli arp bad-operation
+mise run run -- arp-reply
+mise run run -- arp-bad-hardware
+mise run run -- arp-bad-protocol
+mise run run -- arp-bad-length
+mise run run -- arp-bad-operation
 ```
 
-Run the current test binary with:
+## Checks
+
+Run the packet-stack and CLI-framework tests with:
 
 ```sh
 mise run test
+mise run test:parser
 ```
+
+`mise run dev` builds every default target with debug checks. `mise run build`
+does the same in release mode.
+
+## Layout
+
+- `modules/` contains the packet types, classifiers, and reusable match module.
+- `src/` contains the C API implementation and packet handling.
+- `cli/framework/` contains the declarative parser and diagnostic modules.
+- `cli/shitnet-commands.cppm` declares the real multicall command tree.
+- `cli/shitnet-arp.cppm` contains the CLI's ARP scenarios.

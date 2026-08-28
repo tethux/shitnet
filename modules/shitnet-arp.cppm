@@ -2,7 +2,6 @@ module;
 
 #include <cstddef>
 #include <cstdint>
-#include <shitnet/macros.h>
 #include <span>
 #include <variant>
 
@@ -33,46 +32,46 @@ export class ArpPacketView {
     explicit ArpPacketView(std::span<const std::byte> bytes) : bytes_(bytes) {}
 
     [[nodiscard]]
-    fn hardwareType() const -> ArpHardwareType {
-        const let hi = std::to_integer<std::uint16_t>(bytes_[0]);
-        const let lo = std::to_integer<std::uint16_t>(bytes_[1]);
+    auto hardwareType() const -> ArpHardwareType {
+        const auto hi = std::to_integer<std::uint16_t>(bytes_[0]);
+        const auto lo = std::to_integer<std::uint16_t>(bytes_[1]);
 
         return static_cast<ArpHardwareType>((hi << 8) | lo);
     }
 
     [[nodiscard]]
-    fn protocolType() const -> ArpProtocolType {
-        const let hi = std::to_integer<std::uint16_t>(bytes_[2]);
-        const let lo = std::to_integer<std::uint16_t>(bytes_[3]);
+    auto protocolType() const -> ArpProtocolType {
+        const auto hi = std::to_integer<std::uint16_t>(bytes_[2]);
+        const auto lo = std::to_integer<std::uint16_t>(bytes_[3]);
 
         return static_cast<ArpProtocolType>((hi << 8) | lo);
     }
 
     [[nodiscard]]
-    fn hardwareLength() const -> std::uint8_t {
+    auto hardwareLength() const -> std::uint8_t {
         return std::to_integer<std::uint8_t>(bytes_[4]);
     }
 
     [[nodiscard]]
-    fn protocolLength() const -> std::uint8_t {
+    auto protocolLength() const -> std::uint8_t {
         return std::to_integer<std::uint8_t>(bytes_[5]);
     }
 
     [[nodiscard]]
-    fn rawOperation() const -> std::uint16_t {
-        const let hi = std::to_integer<std::uint16_t>(bytes_[6]);
-        const let lo = std::to_integer<std::uint16_t>(bytes_[7]);
+    auto rawOperation() const -> std::uint16_t {
+        const auto hi = std::to_integer<std::uint16_t>(bytes_[6]);
+        const auto lo = std::to_integer<std::uint16_t>(bytes_[7]);
 
         return static_cast<std::uint16_t>((hi << 8) | lo);
     }
 
     [[nodiscard]]
-    fn operation() const -> ArpOperation {
+    auto operation() const -> ArpOperation {
         return static_cast<ArpOperation>(rawOperation());
     }
 
     [[nodiscard]]
-    fn senderMac() const -> MacAddress {
+    auto senderMac() const -> MacAddress {
         MacAddress result{};
 
         for (std::size_t i = 0; i < 6; ++i)
@@ -82,7 +81,7 @@ export class ArpPacketView {
     }
 
     [[nodiscard]]
-    fn senderIp() const -> IPv4Address {
+    auto senderIp() const -> IPv4Address {
         IPv4Address result{};
 
         for (std::size_t i = 0; i < 4; ++i)
@@ -92,7 +91,7 @@ export class ArpPacketView {
     }
 
     [[nodiscard]]
-    fn targetMac() const -> MacAddress {
+    auto targetMac() const -> MacAddress {
         MacAddress result{};
 
         for (std::size_t i = 0; i < 6; ++i)
@@ -102,7 +101,7 @@ export class ArpPacketView {
     }
 
     [[nodiscard]]
-    fn targetIp() const -> IPv4Address {
+    auto targetIp() const -> IPv4Address {
         IPv4Address result{};
 
         for (std::size_t i = 0; i < 4; ++i)
@@ -147,7 +146,7 @@ export {
                      UnsupportedArpProtocol, InvalidArpAddressLengths,
                      UnknownArpOperation>;
 
-    fn classifyArp(ArpPacketView packet) -> ArpPacket {
+    auto classifyArp(ArpPacketView packet) -> ArpPacket {
         if (packet.hardwareType() != ArpHardwareType::ethernet) {
             return UnsupportedArpHardware{
                 .hardware = packet.hardwareType(),

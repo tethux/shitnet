@@ -2,7 +2,6 @@ module;
 
 #include <cstddef>
 #include <cstdint>
-#include <shitnet/macros.h>
 #include <span>
 #include <variant>
 
@@ -21,33 +20,33 @@ export class IPv4PacketView {
     explicit IPv4PacketView(std::span<const std::byte> bytes) : bytes_(bytes) {}
 
     [[nodiscard]]
-    fn version() const -> std::uint8_t {
+    auto version() const -> std::uint8_t {
         return std::to_integer<std::uint8_t>(bytes_[0]) >> 4;
     }
 
     [[nodiscard]]
-    fn headerLength() const -> std::size_t {
-        const let ihl = std::to_integer<std::uint8_t>(bytes_[0]) & 0x0f;
+    auto headerLength() const -> std::size_t {
+        const auto ihl = std::to_integer<std::uint8_t>(bytes_[0]) & 0x0f;
 
         return static_cast<std::size_t>(ihl) * 4;
     }
 
     [[nodiscard]]
-    fn totalLength() const -> std::uint16_t {
-        const let hi = std::to_integer<std::uint16_t>(bytes_[2]);
-        const let lo = std::to_integer<std::uint16_t>(bytes_[3]);
+    auto totalLength() const -> std::uint16_t {
+        const auto hi = std::to_integer<std::uint16_t>(bytes_[2]);
+        const auto lo = std::to_integer<std::uint16_t>(bytes_[3]);
 
         return static_cast<std::uint16_t>((hi << 8) | lo);
     }
 
     [[nodiscard]]
-    fn protocol() const -> IpProtocol {
+    auto protocol() const -> IpProtocol {
         return static_cast<IpProtocol>(
             std::to_integer<std::uint8_t>(bytes_[9]));
     }
 
     [[nodiscard]]
-    fn source() const -> IPv4Address {
+    auto source() const -> IPv4Address {
         IPv4Address result{};
 
         for (std::size_t i = 0; i < 4; ++i)
@@ -57,7 +56,7 @@ export class IPv4PacketView {
     }
 
     [[nodiscard]]
-    fn destination() const -> IPv4Address {
+    auto destination() const -> IPv4Address {
         IPv4Address result{};
 
         for (std::size_t i = 0; i < 4; ++i)
@@ -67,7 +66,7 @@ export class IPv4PacketView {
     }
 
     [[nodiscard]]
-    fn payload() const -> std::span<const std::byte> {
+    auto payload() const -> std::span<const std::byte> {
         return bytes_.subspan(headerLength(), totalLength() - headerLength());
     }
 
@@ -108,7 +107,7 @@ export {
                      UnsupportedIpv4HeaderLength, InvalidIpv4Length,
                      UnknownIpProtocol>;
 
-    fn classifyIPv4(IPv4PacketView packet, std::size_t available)
+    auto classifyIPv4(IPv4PacketView packet, std::size_t available)
         -> IPv4Packet {
         if (packet.version() != 4) {
             return UnsupportedIpVersion{

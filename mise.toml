@@ -17,6 +17,10 @@ run = "xmake build -y shitnet-tests && xmake run shitnet-tests"
 description = "run the CLI"
 run = "xmake build -y shitnet-cli && xmake run shitnet-cli"
 
+[tasks."test:parser"]
+description = "run the CLI parser tests"
+run = "xmake build -y cli-parser-tests && xmake run cli-parser-tests"
+
 [tasks.compiledb]
 description = "generate compile_commands.json with xmake"
 run = "xmake build -a -y && xmake project -k compile_commands --lsp=clangd"

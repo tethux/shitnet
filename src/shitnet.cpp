@@ -1,6 +1,5 @@
 #include <cstddef>
 #include <cstdint>
-#include <shitnet/macros.h>
 #include <shitnet/shitnet.h>
 
 #include <deque>
@@ -14,6 +13,7 @@ import shitnet.ethernet;
 import shitnet.frame;
 import shitnet.icmp;
 import shitnet.ipv4;
+import shitnet.match;
 
 struct shitnet {
     MacAddress mac{
@@ -42,14 +42,15 @@ struct shitnet {
     std::deque<Frame> tx;
 };
 
-static fn internet_checksum(std::span<const std::byte> bytes) -> std::uint16_t {
+static auto internet_checksum(std::span<const std::byte> bytes)
+    -> std::uint16_t {
     std::uint32_t sum = 0;
     std::size_t i = 0;
 
     while (i + 1 < bytes.size()) {
-        const let hi = std::to_integer<std::uint16_t>(bytes[i]);
+        const auto hi = std::to_integer<std::uint16_t>(bytes[i]);
 
-        const let lo = std::to_integer<std::uint16_t>(bytes[i + 1]);
+        const auto lo = std::to_integer<std::uint16_t>(bytes[i + 1]);
 
         sum += static_cast<std::uint16_t>((hi << 8) | lo);
 
@@ -68,20 +69,20 @@ static fn internet_checksum(std::span<const std::byte> bytes) -> std::uint16_t {
     return static_cast<std::uint16_t>(~sum);
 }
 
-static fn write_u16(std::span<std::byte> bytes, std::size_t offset,
-                    std::uint16_t value) -> void {
+static auto write_u16(std::span<std::byte> bytes, std::size_t offset,
+                      std::uint16_t value) -> void {
     bytes[offset] = std::byte{static_cast<std::uint8_t>(value >> 8)};
 
     bytes[offset + 1] = std::byte{static_cast<std::uint8_t>(value & 0xff)};
 }
 
-static fn make_arp_reply(const shitnet &net, const ArpPacketView &req)
+static auto make_arp_reply(const shitnet &net, const ArpPacketView &req)
     -> Frame {
     Frame reply{42};
-    let bytes = reply.bytes();
+    auto bytes = reply.bytes();
 
-    const let req_mac = req.senderMac();
-    const let req_ip = req.senderIp();
+    const auto req_mac = req.senderMac();
+    const auto req_ip = req.senderIp();
 
     for (std::size_t i = 0; i < 6; ++i)
         bytes[i] = req_mac.bytes[i];
@@ -119,21 +120,21 @@ static fn make_arp_reply(const shitnet &net, const ArpPacketView &req)
     return reply;
 }
 
-static fn make_icmp_echo_reply(const shitnet &net,
-                               const EthernetFrameView &ethernet,
-                               const IPv4PacketView &ip,
-                               const IcmpPacketView &icmp) -> Frame {
-    const let icmp_size = 8 + icmp.payload().size();
+static auto make_icmp_echo_reply(const shitnet &net,
+                                 const EthernetFrameView &ethernet,
+                                 const IPv4PacketView &ip,
+                                 const IcmpPacketView &icmp) -> Frame {
+    const auto icmp_size = 8 + icmp.payload().size();
 
-    const let ipv4_size = 20 + icmp_size;
+    const auto ipv4_size = 20 + icmp_size;
 
     Frame reply{14 + ipv4_size};
 
-    let bytes = reply.bytes();
+    auto bytes = reply.bytes();
 
     // ethernet
 
-    const let destination_mac = ethernet.source();
+    const auto destination_mac = ethernet.source();
 
     for (std::size_t i = 0; i < 6; ++i)
         bytes[i] = destination_mac.bytes[i];
@@ -146,7 +147,7 @@ static fn make_icmp_echo_reply(const shitnet &net,
 
     // IPv4 start at byte 14
 
-    const let ip_offset = std::size_t{14};
+    const auto ip_offset = std::size_t{14};
 
     bytes[ip_offset + 0] = std::byte{0x45};
 
@@ -177,14 +178,14 @@ static fn make_icmp_echo_reply(const shitnet &net,
         bytes[ip_offset + 12 + i] = net.ip.bytes[i];
 
     // dst
-    const let destination_ip = ip.source();
+    const auto destination_ip = ip.source();
 
     for (std::size_t i = 0; i < 4; ++i)
         bytes[ip_offset + 16 + i] = destination_ip.bytes[i];
 
     // imcmp start after 20-byte ipv4 header
 
-    const let icmp_offset = ip_offset + 20;
+    const auto icmp_offset = ip_offset + 20;
 
     // echo reply
     bytes[icmp_offset + 0] =
@@ -204,7 +205,7 @@ static fn make_icmp_echo_reply(const shitnet &net,
     write_u16(bytes, icmp_offset + 6, icmp.sequence());
 
     // same payload
-    const let payload = icmp.payload();
+    const auto payload = icmp.payload();
 
     for (std::size_t i = 0; i < payload.size(); ++i) {
         bytes[icmp_offset + 8 + i] = payload[i];
@@ -212,31 +213,31 @@ static fn make_icmp_echo_reply(const shitnet &net,
 
     // icmp checksum
 
-    const let icmp_bytes = std::span<const std::byte>{
+    const auto icmp_bytes = std::span<const std::byte>{
         bytes.data() + icmp_offset,
         icmp_size,
     };
 
-    const let icmp_checksum = internet_checksum(icmp_bytes);
+    const auto icmp_checksum = internet_checksum(icmp_bytes);
 
     write_u16(bytes, icmp_offset + 2, icmp_checksum);
 
     // ipv4 checksum of the ipv4 header
 
-    const let ip_header = std::span<const std::byte>{
+    const auto ip_header = std::span<const std::byte>{
         bytes.data() + ip_offset,
         20,
     };
 
-    const let ip_checksum = internet_checksum(ip_header);
+    const auto ip_checksum = internet_checksum(ip_header);
 
     write_u16(bytes, ip_offset + 10, ip_checksum);
 
     return reply;
 }
 
-static fn learn_arp(shitnet &net, IPv4Address ip, MacAddress mac) -> void {
-    for (let &entry : net.arp_table) {
+static auto learn_arp(shitnet &net, IPv4Address ip, MacAddress mac) -> void {
+    for (auto &entry : net.arp_table) {
         if (entry.ip == ip) {
             entry.mac = mac;
             return;
@@ -249,64 +250,59 @@ static fn learn_arp(shitnet &net, IPv4Address ip, MacAddress mac) -> void {
     });
 }
 
-static fn handle_arp(shitnet &net, ArpPacket packet) -> int {
-    return match(std::move(packet))(
-        case_(ArpRequest, req) {
+static auto handle_arp(shitnet &net, ArpPacket packet) -> int {
+    return match(
+        std::move(packet), case_of<ArpRequest>([&](const auto &req) {
             learn_arp(net, req.packet.senderIp(), req.packet.senderMac());
 
             if (req.packet.targetIp() != net.ip)
                 return 0;
 
-            let reply = make_arp_reply(net, req.packet);
+            auto reply = make_arp_reply(net, req.packet);
 
             net.tx.push_back(std::move(reply));
 
             return 1;
-        },
+        }),
 
-        case_(ArpReply, reply) {
+        case_of<ArpReply>([&](const auto &reply) {
             learn_arp(net, reply.packet.senderIp(), reply.packet.senderMac());
 
             return 0;
-        },
+        }),
 
-        case_(UnsupportedArpHardware) { return 0; },
-
-        case_(UnsupportedArpProtocol) { return 0; },
-
-        case_(InvalidArpAddressLengths) { return -2; },
-
-        case_(UnknownArpOperation) { return 0; });
+        case_of<UnsupportedArpHardware>([](const auto &) { return 0; }),
+        case_of<UnsupportedArpProtocol>([](const auto &) { return 0; }),
+        case_of<InvalidArpAddressLengths>([](const auto &) { return -2; }),
+        case_of<UnknownArpOperation>([](const auto &) { return 0; }));
 }
 
-static fn handle_icmp(shitnet &net, const EthernetFrameView &ethernet,
-                      const IPv4PacketView &ip, IcmpPacket packet) -> int {
-    return match(std::move(packet))(
-        case_(IcmpEchoRequest, request) {
-            let reply = make_icmp_echo_reply(net, ethernet, ip, request.packet);
+static auto handle_icmp(shitnet &net, const EthernetFrameView &ethernet,
+                        const IPv4PacketView &ip, IcmpPacket packet) -> int {
+    return match(std::move(packet),
+                 case_of<IcmpEchoRequest>([&](const auto &request) {
+                     auto reply = make_icmp_echo_reply(net, ethernet, ip,
+                                                       request.packet);
 
-            net.tx.push_back(std::move(reply));
+                     net.tx.push_back(std::move(reply));
 
-            return 1;
-        },
-
-        case_(IcmpEchoReply) { return 0; },
-
-        case_(UnsupportedIcmpType) { return 0; },
-
-        case_(UnsupportedIcmpCode) { return 0; });
+                     return 1;
+                 }),
+                 case_of<IcmpEchoReply>([](const auto &) { return 0; }),
+                 case_of<UnsupportedIcmpType>([](const auto &) { return 0; }),
+                 case_of<UnsupportedIcmpCode>([](const auto &) { return 0; }));
 }
 
-static fn handle_ipv4(shitnet &net, const EthernetFrameView &ethernet,
-                      IPv4Packet packet) -> int {
-    return match(std::move(packet))(
-        case_(IPv4Icmp, icmp_ip) {
-            const let &ip = icmp_ip.packet;
+static auto handle_ipv4(shitnet &net, const EthernetFrameView &ethernet,
+                        IPv4Packet packet) -> int {
+    return match(
+        std::move(packet), case_of<IPv4Icmp>([&](const auto &icmp_ip) {
+            const auto &ip = icmp_ip.packet;
 
             if (ip.destination() != net.ip)
                 return 0;
 
-            const let payload = ip.payload();
+            const auto payload = ip.payload();
 
             if (payload.size() < 8)
                 return -2;
@@ -314,28 +310,24 @@ static fn handle_ipv4(shitnet &net, const EthernetFrameView &ethernet,
             const IcmpPacketView icmp{payload};
 
             return handle_icmp(net, ethernet, ip, classifyIcmp(icmp));
-        },
+        }),
 
-        case_(IPv4Tcp) {
+        case_of<IPv4Tcp>([](const auto &) {
             // future veyas issue
             return 0;
-        },
+        }),
 
-        case_(IPv4Udp) {
+        case_of<IPv4Udp>([](const auto &) {
             // future veyas issue
             return 0;
-        },
-
-        case_(UnsupportedIpVersion) { return 0; },
-
-        case_(UnsupportedIpv4HeaderLength) { return 0; },
-
-        case_(InvalidIpv4Length) { return -2; },
-
-        case_(UnknownIpProtocol) { return 0; });
+        }),
+        case_of<UnsupportedIpVersion>([](const auto &) { return 0; }),
+        case_of<UnsupportedIpv4HeaderLength>([](const auto &) { return 0; }),
+        case_of<InvalidIpv4Length>([](const auto &) { return -2; }),
+        case_of<UnknownIpProtocol>([](const auto &) { return 0; }));
 }
 
-cfn shitnet_create(void) -> shitnet * {
+extern "C" auto shitnet_create(void) -> shitnet * {
     try {
         return new shitnet{};
     } catch (...) {
@@ -343,22 +335,22 @@ cfn shitnet_create(void) -> shitnet * {
     }
 }
 
-cfn shitnet_destroy(shitnet *instance) -> void {
+extern "C" auto shitnet_destroy(shitnet *instance) -> void {
     try {
         delete instance;
     } catch (...) {
     }
 }
 
-cfn shitnet_tx_size(const shitnet *instance) -> size_t {
+extern "C" auto shitnet_tx_size(const shitnet *instance) -> size_t {
     if (instance == nullptr)
         return 0;
 
     return instance->tx.size();
 }
 
-cfn shitnet_arp_lookup(const shitnet *instance, const uint8_t ip[4],
-                       uint8_t mac[6]) -> int {
+extern "C" auto shitnet_arp_lookup(const shitnet *instance, const uint8_t ip[4],
+                                   uint8_t mac[6]) -> int {
     try {
         if (instance == nullptr || ip == nullptr || mac == nullptr) {
             return -1;
@@ -370,7 +362,7 @@ cfn shitnet_arp_lookup(const shitnet *instance, const uint8_t ip[4],
             address.bytes[i] = std::byte{ip[i]};
         }
 
-        for (const let &entry : instance->arp_table) {
+        for (const auto &entry : instance->arp_table) {
             if (entry.ip != address)
                 continue;
 
@@ -388,8 +380,8 @@ cfn shitnet_arp_lookup(const shitnet *instance, const uint8_t ip[4],
     }
 }
 
-cfn shitnet_poll_tx(shitnet *instance, uint8_t *buffer, size_t buffer_size,
-                    size_t *written) -> int {
+extern "C" auto shitnet_poll_tx(shitnet *instance, uint8_t *buffer,
+                                size_t buffer_size, size_t *written) -> int {
     try {
         if (instance == nullptr || buffer == nullptr || written == nullptr) {
             return -1;
@@ -400,9 +392,9 @@ cfn shitnet_poll_tx(shitnet *instance, uint8_t *buffer, size_t buffer_size,
             return 0;
         }
 
-        const let &frame = instance->tx.front();
+        const auto &frame = instance->tx.front();
 
-        const let bytes = frame.bytes();
+        const auto bytes = frame.bytes();
 
         if (buffer_size < bytes.size())
             return -2;
@@ -422,13 +414,14 @@ cfn shitnet_poll_tx(shitnet *instance, uint8_t *buffer, size_t buffer_size,
     }
 }
 
-cfn shitnet_receive(shitnet *instance, const uint8_t *data, size_t len) -> int {
+extern "C" auto shitnet_receive(shitnet *instance, const uint8_t *data,
+                                size_t len) -> int {
     try {
         if (instance == nullptr || data == nullptr || len < 14) {
             return -1;
         }
 
-        const let bytes = std::span{
+        const auto bytes = std::span{
             reinterpret_cast<const std::byte *>(data),
             len,
         };
@@ -437,7 +430,7 @@ cfn shitnet_receive(shitnet *instance, const uint8_t *data, size_t len) -> int {
 
         switch (frame.etherType()) {
         case EtherType::arp: {
-            const let payload = frame.payload();
+            const auto payload = frame.payload();
 
             if (payload.size() < 28)
                 return -2;
@@ -448,7 +441,7 @@ cfn shitnet_receive(shitnet *instance, const uint8_t *data, size_t len) -> int {
         }
 
         case EtherType::ipv4: {
-            const let payload = frame.payload();
+            const auto payload = frame.payload();
 
             if (payload.size() < 20)
                 return -2;
