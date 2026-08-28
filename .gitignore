@@ -1,0 +1,13 @@
+/.zig-cache/
+/zig-out/
+/compile_commands.json
+/.bear-fingerprints/
+/.cache/
+*.out
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.exe

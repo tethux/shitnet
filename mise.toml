@@ -1,0 +1,32 @@
+[tools]
+zig = "0.16.0"
+clang-format = "latest"
+"conda:bear" = "latest"
+
+[tasks.build]
+description = "build shitnet"
+run = "zig build -Doptimize=ReleaseFast"
+
+[tasks.dev]
+description = "build shitnet with debug checks"
+run = "zig build -Doptimize=Debug"
+
+[tasks.test]
+description = "run the scaffold test"
+run = "zig build test"
+
+[tasks.run]
+description = "run the scaffold verification"
+run = "zig build run"
+
+[tasks.compiledb]
+description = "generate compile_commands.json"
+run = "make compiledb"
+
+[tasks.format]
+description = "format C++ sources and headers"
+run = "find src include tests -type f \\( -name '*.cpp' -o -name '*.hpp' -o -name '*.h' \\) -print0 | xargs -0 clang-format -i"
+
+[tasks.clean]
+description = "remove generated build files"
+run = "rm -rf zig-out .zig-cache compile_commands.json"
