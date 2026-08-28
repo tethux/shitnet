@@ -6,7 +6,15 @@ import shitnet.arp;
 import shitnet.ethernet;
 
 struct shitnet {
-    int dummy = 0;
+    IPv4Address ip{
+        .bytes =
+            {
+                std::byte{10},
+                std::byte{0},
+                std::byte{0},
+                std::byte{2},
+            },
+    };
 };
 
 extern "C" shitnet *shitnet_create(void) {
@@ -40,12 +48,22 @@ extern "C" int shitnet_receive(shitnet *instance, const uint8_t *data,
         if (frame.etherType() != EtherType::arp) {
             return 0;
         }
+
         if (frame.payload().size() < 28) {
             return -2;
         }
 
         const ArpPacketView arp{frame.payload()};
-        return arp.operation() == 1 ? 1 : 0;
+
+        if (arp.operation() != ArpOperation::request) {
+            return 0;
+        }
+
+        if (arp.targetIp() != instance->ip) {
+            return 0;
+        }
+
+        return 1;
     } catch (...) {
         return -1;
     }
