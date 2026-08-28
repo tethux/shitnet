@@ -1,5 +1,7 @@
 # shitnet
 
+bla bla bal codex yipp yapp, i am just goofing arround with cpp and its surprisingly nice to use
+
 A small C++23 userspace network stack. It currently receives, classifies, and
 replies to ARP packets, and learns sender addresses from ARP replies.
 
