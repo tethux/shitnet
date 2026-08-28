@@ -1,3 +1,5 @@
+#include <cstddef>
+#include <cstdint>
 #include <shitnet/shitnet.h>
 
 #include <deque>
@@ -146,4 +148,35 @@ extern "C" size_t shitnet_tx_size(const shitnet *instance) {
         return 0;
 
     return instance->tx.size();
+}
+
+extern "C" int shitnet_poll_tx(shitnet *instance, uint8_t *buffer,
+                               size_t buffer_size, size_t *written) {
+    try {
+        if (instance == nullptr || buffer == nullptr || written == nullptr)
+            return -1;
+
+        if (instance->tx.empty()) {
+            *written = 0;
+            return 0;
+        }
+
+        const auto &frame = instance->tx.front();
+        const auto bytes = frame.bytes();
+
+        if (buffer_size < bytes.size()) {
+            return -2;
+        }
+
+        for (std::size_t i = 0; i < bytes.size(); ++i)
+            buffer[i] = std::to_integer<std::uint8_t>(bytes[i]);
+
+        *written = bytes.size();
+
+        instance->tx.pop_front();
+        return 1;
+
+    } catch (...) {
+        return -1;
+    }
 }
