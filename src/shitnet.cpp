@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <cstdint>
+#include <shitnet/macros.h>
 #include <shitnet/shitnet.h>
 
 #include <deque>
@@ -34,7 +35,8 @@ struct shitnet {
     std::deque<Frame> tx;
 };
 
-static Frame make_arp_reply(const shitnet &net, const ArpPacketView &req) {
+static fn make_arp_reply(const shitnet &net, const ArpPacketView &req)
+    -> Frame {
     Frame reply{42};
     auto bytes = reply.bytes();
 
@@ -89,7 +91,7 @@ static Frame make_arp_reply(const shitnet &net, const ArpPacketView &req) {
     return reply;
 }
 
-extern "C" shitnet *shitnet_create(void) {
+cfn shitnet_create(void) -> shitnet * {
     try {
         return new shitnet{};
     } catch (...) {
@@ -97,15 +99,14 @@ extern "C" shitnet *shitnet_create(void) {
     }
 }
 
-extern "C" void shitnet_destroy(shitnet *instance) {
+cfn shitnet_destroy(shitnet *instance) -> void {
     try {
         delete instance;
     } catch (...) {
     }
 }
 
-extern "C" int shitnet_receive(shitnet *instance, const uint8_t *data,
-                               size_t len) {
+cfn shitnet_receive(shitnet *instance, const uint8_t *data, size_t len) -> int {
     try {
         if (instance == nullptr || data == nullptr || len < 14) {
             return -1;
@@ -143,15 +144,15 @@ extern "C" int shitnet_receive(shitnet *instance, const uint8_t *data,
     }
 }
 
-extern "C" size_t shitnet_tx_size(const shitnet *instance) {
+cfn shitnet_tx_size(const shitnet *instance) -> size_t {
     if (instance == nullptr)
         return 0;
 
     return instance->tx.size();
 }
 
-extern "C" int shitnet_poll_tx(shitnet *instance, uint8_t *buffer,
-                               size_t buffer_size, size_t *written) {
+cfn shitnet_poll_tx(shitnet *instance, uint8_t *buffer, size_t buffer_size,
+                    size_t *written) -> int {
     try {
         if (instance == nullptr || buffer == nullptr || written == nullptr)
             return -1;

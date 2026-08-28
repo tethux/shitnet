@@ -2,6 +2,7 @@ module;
 
 #include <cstddef>
 #include <cstdint>
+#include <shitnet/macros.h>
 #include <span>
 
 export module shitnet.ethernet;
@@ -20,7 +21,7 @@ export class EthernetFrameView {
         : bytes_(bytes) {}
 
     [[nodiscard]]
-    MacAddress destination() const {
+    fn destination() const -> MacAddress {
         MacAddress result{};
         for (std::size_t i = 0; i < 6; ++i)
             result.bytes[i] = bytes_[i];
@@ -28,7 +29,7 @@ export class EthernetFrameView {
     }
 
     [[nodiscard]]
-    MacAddress source() const {
+    fn source() const -> MacAddress {
         MacAddress result{};
         for (std::size_t i = 0; i < 6; ++i)
             result.bytes[i] = bytes_[6 + i];
@@ -36,14 +37,14 @@ export class EthernetFrameView {
     }
 
     [[nodiscard]]
-    EtherType etherType() const {
+    fn etherType() const -> EtherType {
         const auto hi = std::to_integer<std::uint16_t>(bytes_[12]);
         const auto lo = std::to_integer<std::uint16_t>(bytes_[13]);
         return static_cast<EtherType>((hi << 8) | lo);
     }
 
     [[nodiscard]]
-    std::span<const std::byte> payload() const {
+    fn payload() const -> std::span<const std::byte> {
         return bytes_.subspan(14);
     }
 
