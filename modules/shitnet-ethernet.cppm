@@ -1,5 +1,7 @@
 module;
 
+#include <shitnet/macros.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -20,7 +22,7 @@ export class EthernetFrameView {
         : bytes_(bytes) {}
 
     [[nodiscard]]
-    auto destination() const -> MacAddress {
+    fn destination() const -> MacAddress {
         MacAddress result{};
         for (std::size_t i = 0; i < 6; ++i)
             result.bytes[i] = bytes_[i];
@@ -28,7 +30,7 @@ export class EthernetFrameView {
     }
 
     [[nodiscard]]
-    auto source() const -> MacAddress {
+    fn source() const -> MacAddress {
         MacAddress result{};
         for (std::size_t i = 0; i < 6; ++i)
             result.bytes[i] = bytes_[6 + i];
@@ -36,14 +38,14 @@ export class EthernetFrameView {
     }
 
     [[nodiscard]]
-    auto etherType() const -> EtherType {
-        const auto hi = std::to_integer<std::uint16_t>(bytes_[12]);
-        const auto lo = std::to_integer<std::uint16_t>(bytes_[13]);
+    fn etherType() const -> EtherType {
+        const let hi = std::to_integer<std::uint16_t>(bytes_[12]);
+        const let lo = std::to_integer<std::uint16_t>(bytes_[13]);
         return static_cast<EtherType>((hi << 8) | lo);
     }
 
     [[nodiscard]]
-    auto payload() const -> std::span<const std::byte> {
+    fn payload() const -> std::span<const std::byte> {
         return bytes_.subspan(14);
     }
 

@@ -1,33 +1,27 @@
 module;
 
-#include <type_traits>
+#include <shitnet/macros.h>
+
 #include <utility>
 #include <variant>
 
 export module shitnet.match;
 
-template <typename... Functions> struct overloaded : Functions... {
-    using Functions::operator()...;
+template <class... Fs> struct overloaded : Fs... {
+    using Fs::operator()...;
 };
 
-template <typename... Functions>
-overloaded(Functions...) -> overloaded<Functions...>;
+template <class... Fs> overloaded(Fs...) -> overloaded<Fs...>;
 
-export template <typename Type, typename Function> struct match_case {
-    Function function;
+export template <class V> struct matcher {
+    V &&value;
 
-    auto operator()(const Type &value) const -> decltype(auto) {
-        return function(value);
+    template <class... Cases> decltype(auto) operator()(Cases &&...cases) {
+        return std::visit(overloaded{std::forward<Cases>(cases)...},
+                          std::forward<V>(value));
     }
 };
 
-export template <typename Type, typename Function>
-auto case_of(Function &&function) -> match_case<Type, std::decay_t<Function>> {
-    return {std::forward<Function>(function)};
-}
-
-export template <typename Variant, typename... Cases>
-auto match(Variant &&value, Cases &&...cases) -> decltype(auto) {
-    return std::visit(overloaded{std::forward<Cases>(cases)...},
-                      std::forward<Variant>(value));
+export template <class V> fn match(V &&value) {
+    return matcher<V>{std::forward<V>(value)};
 }

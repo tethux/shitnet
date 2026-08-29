@@ -1,5 +1,7 @@
 module;
 
+#include <shitnet/macros.h>
+
 #include <array>
 #include <cstddef>
 

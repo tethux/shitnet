@@ -1,5 +1,7 @@
 module;
 
+#include <shitnet/macros.h>
+
 #include <cstddef>
 #include <span>
 #include <vector>
@@ -11,12 +13,12 @@ export class Frame {
     explicit Frame(std::size_t size) : bytes_(size) {}
 
     [[nodiscard]]
-    auto bytes() -> std::span<std::byte> {
+    fn bytes() -> std::span<std::byte> {
         return bytes_;
     }
 
     [[nodiscard]]
-    auto bytes() const -> std::span<const std::byte> {
+    fn bytes() const -> std::span<const std::byte> {
         return bytes_;
     }
 
