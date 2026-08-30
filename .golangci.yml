@@ -1,0 +1,46 @@
+version: "2"
+
+linters:
+  disable:
+    - dupl
+    - gocyclo
+
+  enable:
+    - errcheck
+    - errorlint
+    - gocritic
+    - gosec
+    - govet
+    - ineffassign
+    - nilnil
+    - noctx
+    - prealloc
+    - staticcheck
+
+  settings:
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+
+    revive:
+      severity: warning
+      rules:
+        - name: exported
+          disabled: true
+
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        - wrapperFunc
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+
+  exclusions:
+    generated: strict
+    presets: []

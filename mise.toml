@@ -1,5 +1,10 @@
 [tools]
 clang-format = "latest"
+go = "1.26.5"
+golangci-lint = "2.10.1"
+"go:mvdan.cc/gofumpt" = "0.9.2"
+"go:golang.org/x/tools/cmd/goimports" = "0.42.0"
+"go:golang.org/x/tools/gopls" = "0.23.0"
 
 [tasks.build]
 description = "build shitnet"
@@ -28,6 +33,24 @@ run = "xmake build -a -y && xmake project -k compile_commands --lsp=clangd"
 [tasks.format]
 description = "format C and C++ interfaces and sources"
 run = "find src modules include tests cli -type f \\( -name '*.cpp' -o -name '*.cppm' -o -name '*.h' \\) -print0 | xargs -0 clang-format -i"
+
+[tasks."fmt:go"]
+description = "format Go code"
+run = "find . -path ./build -prune -o -name '*.go' -print0 | xargs -0 goimports -w && find . -path ./build -prune -o -name '*.go' -print0 | xargs -0 gofumpt -w"
+
+[tasks."lint:go"]
+description = "lint Go code"
+depends = ["build:native"]
+run = "golangci-lint run ./..."
+
+[tasks."test:go"]
+description = "test Go code"
+depends = ["build:native"]
+run = "go test ./..."
+
+[tasks."build:native"]
+description = "build the native library for Go"
+run = "xmake build -y shitnet"
 
 [tasks.clean]
 description = "remove generated build files"

@@ -18,11 +18,29 @@ import shitnet.icmp;
 import shitnet.ipv4;
 import shitnet.match;
 
+export enum class StackEventType {
+    none,
+    arpLearned,
+    icmpEchoRequest,
+    icmpEchoReply
+};
+
+export struct StackEvent {
+    StackEventType type{StackEventType::none};
+    IPv4Address source_ip{};
+    MacAddress mac{};
+    std::uint16_t identifier{};
+    std::uint16_t sequence{};
+    std::vector<std::byte> payload;
+};
+
 export struct Stack {
     MacAddress mac;
     IPv4Address ip;
     std::vector<ArpEntry> arp_table;
     std::deque<Frame> tx;
+    std::deque<StackEvent> events;
+    StackEvent current_event;
 };
 
 static fn internet_checksum(std::span<const std::byte> bytes) -> std::uint16_t {
@@ -253,10 +271,62 @@ static fn make_icmp_echo_reply(const Stack &net,
     return reply;
 }
 
+static fn make_icmp_echo_request(const Stack &net, IPv4Address target_ip,
+                                 MacAddress target_mac,
+                                 std::uint16_t identifier,
+                                 std::uint16_t sequence,
+                                 std::span<const std::byte> payload) -> Frame {
+    const let icmp_size = 8 + payload.size();
+    const let ipv4_size = 20 + icmp_size;
+    Frame request{14 + ipv4_size};
+    let bytes = request.bytes();
+
+    for (std::size_t i = 0; i < 6; ++i) {
+        bytes[i] = target_mac.bytes[i];
+        bytes[6 + i] = net.mac.bytes[i];
+    }
+
+    bytes[12] = std::byte{0x08};
+    bytes[13] = std::byte{0x00};
+    const let ip_offset = std::size_t{14};
+    bytes[ip_offset] = std::byte{0x45};
+    write_u16(bytes, ip_offset + 2, static_cast<std::uint16_t>(ipv4_size));
+    bytes[ip_offset + 8] = std::byte{64};
+    bytes[ip_offset + 9] =
+        std::byte{static_cast<std::uint8_t>(IpProtocol::icmp)};
+
+    for (std::size_t i = 0; i < 4; ++i) {
+        bytes[ip_offset + 12 + i] = net.ip.bytes[i];
+        bytes[ip_offset + 16 + i] = target_ip.bytes[i];
+    }
+
+    const let icmp_offset = ip_offset + 20;
+    bytes[icmp_offset] =
+        std::byte{static_cast<std::uint8_t>(IcmpType::echoRequest)};
+    write_u16(bytes, icmp_offset + 4, identifier);
+    write_u16(bytes, icmp_offset + 6, sequence);
+    for (std::size_t i = 0; i < payload.size(); ++i)
+        bytes[icmp_offset + 8 + i] = payload[i];
+
+    const let icmp_bytes =
+        std::span<const std::byte>{bytes.data() + icmp_offset, icmp_size};
+    write_u16(bytes, icmp_offset + 2, internet_checksum(icmp_bytes));
+    const let ip_header =
+        std::span<const std::byte>{bytes.data() + ip_offset, 20};
+    write_u16(bytes, ip_offset + 10, internet_checksum(ip_header));
+    return request;
+}
+
 static fn learn_arp(Stack &net, IPv4Address ip, MacAddress mac) -> void {
     for (let &entry : net.arp_table) {
         if (entry.ip == ip) {
             entry.mac = mac;
+            net.events.push_back(StackEvent{.type = StackEventType::arpLearned,
+                                            .source_ip = ip,
+                                            .mac = mac,
+                                            .identifier = 0,
+                                            .sequence = 0,
+                                            .payload = {}});
             return;
         }
     }
@@ -264,6 +334,14 @@ static fn learn_arp(Stack &net, IPv4Address ip, MacAddress mac) -> void {
     net.arp_table.push_back(ArpEntry{
         .ip = ip,
         .mac = mac,
+    });
+    net.events.push_back(StackEvent{
+        .type = StackEventType::arpLearned,
+        .source_ip = ip,
+        .mac = mac,
+        .identifier = 0,
+        .sequence = 0,
+        .payload = {},
     });
 }
 
@@ -298,13 +376,31 @@ static fn handle_icmp(Stack &net, const EthernetFrameView &ethernet,
                       const IPv4PacketView &ip, IcmpPacket packet) -> int {
     return match(std::move(packet))(
         case_(IcmpEchoRequest, request) {
+            const let payload = request.packet.payload();
+            net.events.push_back(StackEvent{
+                .type = StackEventType::icmpEchoRequest,
+                .source_ip = ip.source(),
+                .identifier = request.packet.identifier(),
+                .sequence = request.packet.sequence(),
+                .payload = {payload.begin(), payload.end()},
+            });
             let reply = make_icmp_echo_reply(net, ethernet, ip, request.packet);
 
             net.tx.push_back(std::move(reply));
 
             return 1;
         },
-        case_(IcmpEchoReply) { return 0; },
+        case_(IcmpEchoReply, reply) {
+            const let payload = reply.packet.payload();
+            net.events.push_back(StackEvent{
+                .type = StackEventType::icmpEchoReply,
+                .source_ip = ip.source(),
+                .identifier = reply.packet.identifier(),
+                .sequence = reply.packet.sequence(),
+                .payload = {payload.begin(), payload.end()},
+            });
+            return 0;
+        },
         case_(UnsupportedIcmpType) { return 0; },
         case_(UnsupportedIcmpCode) { return 0; });
 }
@@ -378,6 +474,36 @@ export fn stack_tx_size(const Stack &stack) -> std::size_t {
 
 export fn stack_arp_request(Stack &stack, IPv4Address target_ip) -> void {
     stack.tx.push_back(make_arp_request(stack, target_ip));
+}
+
+export fn stack_icmp_echo_request(Stack &stack, IPv4Address target_ip,
+                                  std::uint16_t identifier,
+                                  std::uint16_t sequence,
+                                  std::span<const std::byte> payload) -> bool {
+    MacAddress target_mac{};
+    bool resolved = false;
+    for (const let &entry : stack.arp_table) {
+        if (entry.ip == target_ip) {
+            target_mac = entry.mac;
+            resolved = true;
+            break;
+        }
+    }
+    if (!resolved)
+        return false;
+
+    stack.tx.push_back(make_icmp_echo_request(stack, target_ip, target_mac,
+                                              identifier, sequence, payload));
+    return true;
+}
+
+export fn stack_poll_event(Stack &stack) -> const StackEvent * {
+    if (stack.events.empty())
+        return nullptr;
+
+    stack.current_event = std::move(stack.events.front());
+    stack.events.pop_front();
+    return &stack.current_event;
 }
 
 export fn stack_arp_lookup(const Stack &stack, const IPv4Address &ip,

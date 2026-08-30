@@ -6,7 +6,7 @@ module;
 
 export module shitnet;
 
-export using ::shitnet;
+export using ::shitnet_t;
 export using ::shitnet_arp_event;
 export using ::shitnet_config;
 export using ::shitnet_event;

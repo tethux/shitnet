@@ -78,7 +78,7 @@ fn run_shitnet() -> int {
     }
 
     let tap = std::move(*tap_result);
-    shitnet *net = shitnet_create(&default_config);
+    shitnet_t *net = shitnet_create(&default_config);
     if (net == nullptr) {
         std::fprintf(stderr, "failed to create shitnet\n");
         return 1;
@@ -132,6 +132,10 @@ fn run_shitnet() -> int {
             continue;
         }
 
+        shitnet_event event{};
+        while (shitnet_poll_event(net, &event) == 1) {
+        }
+
         while (shitnet_tx_size(net) > 0) {
             std::size_t written = 0;
             const let poll_result =
@@ -178,7 +182,7 @@ fn run_arp_request(std::string_view target_text) -> int {
     }
 
     let tap = std::move(*tap_result);
-    shitnet *net = shitnet_create(&default_config);
+    shitnet_t *net = shitnet_create(&default_config);
     if (net == nullptr) {
         std::fprintf(stderr, "failed to create shitnet\n");
         return 1;

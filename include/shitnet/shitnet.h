@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-typedef struct shitnet shitnet;
+typedef struct shitnet shitnet_t;
 
 typedef struct shitnet_config {
     uint8_t mac[6];
@@ -72,35 +72,35 @@ typedef struct shitnet_event {
  * Lifecycle
  */
 
-shitnet *shitnet_create(const shitnet_config *config);
+shitnet_t *shitnet_create(const shitnet_config *config);
 
-void shitnet_destroy(shitnet *instance);
+void shitnet_destroy(shitnet_t *instance);
 
 /*
  * Dataplane RX/TX
  */
 
-int shitnet_receive(shitnet *instance, const uint8_t *data, size_t len);
+int shitnet_receive(shitnet_t *instance, const uint8_t *data, size_t len);
 
-size_t shitnet_tx_size(const shitnet *instance);
+size_t shitnet_tx_size(const shitnet_t *instance);
 
-int shitnet_poll_tx(shitnet *instance, uint8_t *buffer, size_t buffer_size,
+int shitnet_poll_tx(shitnet_t *instance, uint8_t *buffer, size_t buffer_size,
                     size_t *written);
 
 /*
  * ARP
  */
 
-int shitnet_arp_lookup(const shitnet *instance, const uint8_t ip[4],
+int shitnet_arp_lookup(const shitnet_t *instance, const uint8_t ip[4],
                        uint8_t mac[6]);
 
-int shitnet_arp_request(shitnet *instance, const uint8_t target_ip[4]);
+int shitnet_arp_request(shitnet_t *instance, const uint8_t target_ip[4]);
 
 /*
  * ICMP
  */
 
-int shitnet_icmp_echo_request(shitnet *instance, const uint8_t target_ip[4],
+int shitnet_icmp_echo_request(shitnet_t *instance, const uint8_t target_ip[4],
                               uint16_t identifier, uint16_t sequence,
                               const uint8_t *payload, size_t payload_len);
 
@@ -108,7 +108,7 @@ int shitnet_icmp_echo_request(shitnet *instance, const uint8_t target_ip[4],
  * Events
  */
 
-int shitnet_poll_event(shitnet *instance, shitnet_event *event);
+int shitnet_poll_event(shitnet_t *instance, shitnet_event *event);
 
 #ifdef __cplusplus
 }
