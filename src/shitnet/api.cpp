@@ -82,6 +82,38 @@ cfn shitnet_arp_lookup(const shitnet_t *instance, const uint8_t ip[4],
     }
 }
 
+cfn shitnet_arp_count(const shitnet_t *instance) -> size_t {
+    try {
+        if (instance == nullptr)
+            return 0;
+
+        return stack_arp_count(instance->stack);
+    } catch (...) {
+        return 0;
+    }
+}
+
+cfn shitnet_arp_entry(const shitnet_t *instance, size_t index, uint8_t ip[4],
+                      uint8_t mac[6]) -> int {
+    try {
+        if (instance == nullptr || ip == nullptr || mac == nullptr)
+            return SHITNET_ERR_INVALID_ARGUMENT;
+
+        IPv4Address address{};
+        MacAddress hardware{};
+        if (!stack_arp_entry(instance->stack, index, address, hardware))
+            return SHITNET_LOOKUP_MISS;
+
+        for (std::size_t i = 0; i < address.bytes.size(); ++i)
+            ip[i] = std::to_integer<std::uint8_t>(address.bytes[i]);
+        for (std::size_t i = 0; i < hardware.bytes.size(); ++i)
+            mac[i] = std::to_integer<std::uint8_t>(hardware.bytes[i]);
+        return SHITNET_LOOKUP_FOUND;
+    } catch (...) {
+        return SHITNET_ERR_INTERNAL;
+    }
+}
+
 cfn shitnet_arp_request(shitnet_t *instance, const uint8_t target_ip[4])
     -> int {
     try {

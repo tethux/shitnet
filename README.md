@@ -20,16 +20,30 @@ For an optimized build:
 mise run build
 ```
 
-## Try it
+## Go API
 
-Build the debug CLI and show its commands:
+The binding API is documented with GoDoc. Its public reference will be available
+at [pkg.go.dev/github.com/0xveya/shitnet](https://pkg.go.dev/github.com/0xveya/shitnet)
+after pkg.go.dev indexes the module. Inspect it locally with:
+
+```sh
+mise exec -- go doc github.com/0xveya/shitnet
+mise exec -- go doc github.com/0xveya/shitnet.Shitnet
+mise exec -- go doc github.com/0xveya/shitnet/errs
+```
+
+The API is still experimental. Tethux will use this package once the stack and
+its integration contracts are ready.
+
+## Go REPL
+
+Build the native library used by cgo:
 
 ```sh
 mise run dev
-xmake run shitnet-cli --help
 ```
 
-Create a TAP owned by your user:
+Create and configure a TAP owned by your user:
 
 ```sh
 pkexec ip tuntap add dev shitnet0 mode tap user "$(id -un)"
@@ -37,28 +51,83 @@ pkexec ip addr replace 10.0.0.1/24 dev shitnet0
 pkexec ip link set shitnet0 up
 ```
 
-Run the stack without privilege escalation:
+Start the REPL without privilege escalation:
 
 ```sh
-xmake run shitnet-cli run
+mise exec -- go run ./cmd/shitnet
 ```
 
-In another terminal, ping it:
+Available commands:
+
+```text
+help
+show
+arp
+arp <ipv4>
+ping <ipv4>
+ping -c <count> <ipv4>
+exit
+quit
+```
+
+Try the outbound path from the REPL:
+
+```text
+shitnet> show
+interface  shitnet0
+address    10.0.0.2
+mac        02:00:00:00:00:02
+
+shitnet> arp
+ARP table is empty
+
+shitnet> ping -c 3 10.0.0.1
+reply from 10.0.0.1: icmp_seq=1
+reply from 10.0.0.1: icmp_seq=2
+reply from 10.0.0.1: icmp_seq=3
+3 packets transmitted, 3 received
+
+shitnet> arp
+ADDRESS   MAC
+10.0.0.1  <host-mac>
+```
+
+`arp` reads the native C++ stack's learned table. `arp <ipv4>` looks up one
+entry and sends an ARP request when it is missing. `ping <ipv4>` sends five
+requests by default; `-c` selects another positive count. Ping performs ARP
+resolution itself when the entry is not already known and spaces requests one
+second apart.
+
+While the REPL is running, another terminal can test the inbound path:
 
 ```sh
 ping 10.0.0.2
 ```
 
-To test one outbound ARP request instead of running the stack:
-
-```sh
-xmake run shitnet-cli arp-request --target 10.0.0.1
-```
-
-Remove the TAP when finished:
+Exit the REPL, then remove the TAP:
 
 ```sh
 pkexec ip link delete shitnet0
+```
+
+## C++ CLI
+
+Show the native CLI commands:
+
+```sh
+xmake run shitnet-cli --help
+```
+
+Run the native stack on the configured TAP:
+
+```sh
+xmake run shitnet-cli run
+```
+
+Or test one outbound ARP request:
+
+```sh
+xmake run shitnet-cli arp-request --target 10.0.0.1
 ```
 
 ## Checks
@@ -84,7 +153,8 @@ does the same in release mode.
 - `include/shitnet/shitnet.h` is the binding-friendly public C interface.
 - `shitnet.go` exposes stack lifecycle, RX/TX, ARP, ICMP, and events to Go.
 - `errs/` contains Go error categories and typed operation errors.
-- `cmd/shitnet/` contains the Go command entry point.
+- `cmd/shitnet/` contains the Go REPL and its single-owner packet pump.
+- `internal/tap/` owns the Go Linux TAP boundary.
 - `cli/framework/` contains the declarative parser and diagnostic modules.
 - `cli/shitnet-commands.cppm` declares the real multicall command tree.
 - `cli/shitnet-tap.cppm` owns the Linux TAP device boundary.

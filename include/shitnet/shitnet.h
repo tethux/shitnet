@@ -94,6 +94,11 @@ int shitnet_poll_tx(shitnet_t *instance, uint8_t *buffer, size_t buffer_size,
 int shitnet_arp_lookup(const shitnet_t *instance, const uint8_t ip[4],
                        uint8_t mac[6]);
 
+size_t shitnet_arp_count(const shitnet_t *instance);
+
+int shitnet_arp_entry(const shitnet_t *instance, size_t index, uint8_t ip[4],
+                      uint8_t mac[6]);
+
 int shitnet_arp_request(shitnet_t *instance, const uint8_t target_ip[4]);
 
 /*

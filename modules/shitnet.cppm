@@ -17,6 +17,8 @@ export using ::shitnet_queue_result;
 export using ::shitnet_result;
 export using ::shitnet_create;
 export using ::shitnet_destroy;
+export using ::shitnet_arp_count;
+export using ::shitnet_arp_entry;
 export using ::shitnet_arp_lookup;
 export using ::shitnet_arp_request;
 export using ::shitnet_icmp_echo_request;

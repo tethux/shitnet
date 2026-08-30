@@ -26,15 +26,20 @@ static inline void shitnet_copy_icmp_payload(
 import "C"
 
 import (
+	"fmt"
 	"net/netip"
 
-	"github.com/tethux/shitnet/errs"
+	"github.com/0xveya/shitnet/errs"
 )
 
 const maxFrameSize = 65536
 
 // MAC is a six-byte Ethernet address.
 type MAC [6]byte
+
+func (m MAC) String() string {
+	return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", m[0], m[1], m[2], m[3], m[4], m[5])
+}
 
 // Config contains the addresses assigned to a stack instance.
 type Config struct {
@@ -57,6 +62,12 @@ type TXPoll struct {
 type ARPLookup struct {
 	MAC   MAC
 	Found bool
+}
+
+// ARPEntry contains one address learned by the native stack.
+type ARPEntry struct {
+	IP  netip.Addr
+	MAC MAC
 }
 
 // QueueResult describes whether a frame was queued or needs address resolution.
@@ -220,6 +231,45 @@ func (s *Shitnet) LookupARP(ip netip.Addr) (ARPLookup, error) {
 		lookup.MAC[index] = byte(mac[index])
 	}
 	return lookup, nil
+}
+
+// ARPEntries returns a snapshot of the native ARP table.
+func (s *Shitnet) ARPEntries() ([]ARPEntry, error) {
+	if s == nil || s.ptr == nil {
+		return nil, operationError("list ARP", errs.ErrClosed, nil)
+	}
+
+	count := int(C.shitnet_arp_count(s.ptr))
+	entries := make([]ARPEntry, 0, count)
+	for index := range count {
+		var address [4]C.uint8_t
+		var mac [6]C.uint8_t
+		result := C.shitnet_arp_entry(
+			s.ptr,
+			C.size_t(index),
+			&address[0],
+			&mac[0],
+		)
+		if result < 0 {
+			return nil, nativeError("list ARP", result)
+		}
+		if result != C.SHITNET_LOOKUP_FOUND {
+			continue
+		}
+
+		ip := [4]byte{
+			byte(address[0]),
+			byte(address[1]),
+			byte(address[2]),
+			byte(address[3]),
+		}
+		entry := ARPEntry{IP: netip.AddrFrom4(ip)}
+		for offset := range entry.MAC {
+			entry.MAC[offset] = byte(mac[offset])
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
 }
 
 // ICMPEchoRequest queues an echo request when the destination MAC is resolved.

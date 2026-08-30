@@ -519,6 +519,20 @@ export fn stack_arp_lookup(const Stack &stack, const IPv4Address &ip,
     return false;
 }
 
+export fn stack_arp_count(const Stack &stack) -> std::size_t {
+    return stack.arp_table.size();
+}
+
+export fn stack_arp_entry(const Stack &stack, std::size_t index,
+                          IPv4Address &ip, MacAddress &mac) -> bool {
+    if (index >= stack.arp_table.size())
+        return false;
+
+    ip = stack.arp_table[index].ip;
+    mac = stack.arp_table[index].mac;
+    return true;
+}
+
 export fn stack_poll_tx(Stack &stack, std::span<std::byte> buffer,
                         std::size_t &written) -> int {
     if (stack.tx.empty()) {

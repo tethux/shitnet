@@ -38,6 +38,13 @@ func TestICMPEchoRequestAfterARPLearning(t *testing.T) {
 	if !lookup.Found || lookup.MAC != peerMAC {
 		t.Fatalf("unexpected ARP lookup: %+v", lookup)
 	}
+	entries, entriesErr := stack.ARPEntries()
+	if entriesErr != nil {
+		t.Fatalf("list ARP entries: %v", entriesErr)
+	}
+	if len(entries) != 1 || entries[0].IP != peerIP || entries[0].MAC != peerMAC {
+		t.Fatalf("unexpected ARP entries: %+v", entries)
+	}
 
 	eventPoll, eventErr := stack.PollEvent()
 	if eventErr != nil {
