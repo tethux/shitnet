@@ -1,7 +1,5 @@
 # shitnet
 
-bla bla bal codex yipp yapp, i am just goofing arround with cpp and its surprisingly nice to use
-
 A small C++23 userspace network stack. It classifies Ethernet, ARP, IPv4, and
 ICMP packets, replies to ARP requests and ICMP echo requests, and maintains a
 small ARP table.
@@ -21,43 +19,37 @@ For an optimized build:
 mise run build
 ```
 
-## Commands
+## Try it
 
-The CLI is a typed multicall built with the local framework in `cli/framework`.
-Running it without a command prints the generated menu:
+Build the debug CLI and show its two commands:
 
 ```sh
-mise run run --
+mise run dev
+xmake run shitnet-cli --help
 ```
 
-Send an ARP request to the stack's `10.0.0.2` address:
+Run the stack on an ephemeral TAP:
 
 ```sh
-mise run run -- arp-request --target 2
+pkexec ./build/linux/x86_64/debug/shitnet-cli run
 ```
 
-This produces one 42-byte ARP reply. Another target produces no outgoing frame:
+In another terminal, configure the host side and ping the stack:
 
 ```sh
-mise run run -- arp-request --target 67
+pkexec ip addr replace 10.0.0.1/24 dev shitnet0
+pkexec ip link set shitnet0 up
+ping 10.0.0.2
 ```
 
-Send an ARP reply and verify that its sender is learned:
+To test one outbound ARP request, create a persistent TAP first:
 
 ```sh
-mise run run -- arp-learn
-# 10.0.0.1 -> aa:bb:cc:dd:ee:ff
-```
-
-The remaining commands exercise reply handling and invalid or unsupported ARP
-fields:
-
-```sh
-mise run run -- arp-reply
-mise run run -- arp-bad-hardware
-mise run run -- arp-bad-protocol
-mise run run -- arp-bad-length
-mise run run -- arp-bad-operation
+pkexec ip tuntap add dev shitnet0 mode tap user "$(id -un)"
+pkexec ip addr replace 10.0.0.1/24 dev shitnet0
+pkexec ip link set shitnet0 up
+xmake run shitnet-cli arp-request --target 10.0.0.1
+pkexec ip link delete shitnet0
 ```
 
 ## Checks
@@ -75,7 +67,10 @@ does the same in release mode.
 ## Layout
 
 - `modules/` contains the packet types, classifiers, and reusable match module.
-- `src/` contains the C API implementation and packet handling.
+- `src/shitnet/stack.cppm` contains the typed C++ dataplane and stack state.
+- `src/shitnet/api.cpp` is the C ABI boundary used by the CLI and future
+  language bindings.
+- `include/shitnet/shitnet.h` is the binding-friendly public C interface.
 - `cli/framework/` contains the declarative parser and diagnostic modules.
 - `cli/shitnet-commands.cppm` declares the real multicall command tree.
-- `cli/shitnet-arp.cppm` contains the CLI's ARP scenarios.
+- `cli/shitnet-tap.cppm` owns the Linux TAP device boundary.

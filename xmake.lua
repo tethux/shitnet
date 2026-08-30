@@ -28,7 +28,7 @@ set_default(false)
 add_deps("shitnet")
 add_files("cli/framework/diagnostic.cppm", { public = true })
 add_files("cli/framework/parser.cppm", { public = true })
-add_files("cli/shitnet-arp.cppm", { public = true })
+add_files("cli/shitnet-tap.cppm", { public = true })
 add_files("cli/shitnet-commands.cppm", { public = true })
 add_files("cli/main.cpp")
 
