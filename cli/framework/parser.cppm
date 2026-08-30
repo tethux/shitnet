@@ -1,5 +1,7 @@
 module;
 
+#include <shitnet/macros.h>
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -48,8 +50,8 @@ template <fixed_string S> struct help {
 
 struct required {};
 
-template <auto V> struct default_ {
-    static constexpr auto value = V;
+template <let V> struct default_ {
+    static constexpr let value = V;
 };
 
 template <fixed_string V> struct default_string {
@@ -71,10 +73,9 @@ template <typename... Policies> struct default_policy {
     static constexpr bool exists = false;
 };
 
-template <auto V, typename... Rest>
-struct default_policy<default_<V>, Rest...> {
+template <let V, typename... Rest> struct default_policy<default_<V>, Rest...> {
     static constexpr bool exists = true;
-    static constexpr auto value = V;
+    static constexpr let value = V;
 };
 
 template <fixed_string V, typename... Rest>
@@ -105,7 +106,7 @@ struct choices_policy<First, Rest...> : choices_policy<Rest...> {};
 
 // registered fields
 
-template <auto... Members> struct fields {};
+template <let... Members> struct fields {};
 
 template <fixed_string Name, fixed_string Description, typename Options>
 struct command {
@@ -137,9 +138,9 @@ template <typename T, typename Short, typename Long, typename Help,
 struct option {
     using value_type = T;
 
-    static constexpr auto short_name = Short::value;
-    static constexpr auto long_name = Long::value;
-    static constexpr auto help_text = Help::value;
+    static constexpr let short_name = Short::value;
+    static constexpr let long_name = Long::value;
+    static constexpr let help_text = Help::value;
 
     static constexpr bool takes_value = true;
 
@@ -176,9 +177,9 @@ template <typename Short, typename Long, typename Help> struct flag {
 
     bool value = false;
 
-    static constexpr auto short_name = Short::value;
-    static constexpr auto long_name = Long::value;
-    static constexpr auto help_text = Help::value;
+    static constexpr let short_name = Short::value;
+    static constexpr let long_name = Long::value;
+    static constexpr let help_text = Help::value;
 
     static constexpr bool takes_value = false;
     static constexpr bool is_required = false;
@@ -240,7 +241,7 @@ namespace detail {
 
 template <typename> inline constexpr bool always_false = false;
 
-inline auto edit_distance(std::string_view left, std::string_view right)
+inline fn edit_distance(std::string_view left, std::string_view right)
     -> std::size_t {
     std::vector<std::size_t> previous(right.size() + 1);
     std::vector<std::size_t> current(right.size() + 1);
@@ -253,10 +254,10 @@ inline auto edit_distance(std::string_view left, std::string_view right)
         current[0] = row;
 
         for (std::size_t column = 1; column <= right.size(); ++column) {
-            const auto substitution =
+            const let substitution =
                 previous[column - 1] + (left[row - 1] != right[column - 1]);
-            const auto insertion = current[column - 1] + 1;
-            const auto deletion = previous[column] + 1;
+            const let insertion = current[column - 1] + 1;
+            const let deletion = previous[column] + 1;
 
             current[column] = std::min({substitution, insertion, deletion});
         }
@@ -267,11 +268,11 @@ inline auto edit_distance(std::string_view left, std::string_view right)
     return previous[right.size()];
 }
 
-inline auto consider_suggestion(std::string_view argument,
-                                std::string_view candidate,
-                                std::string &suggestion,
-                                std::size_t &best_distance) -> void {
-    const auto distance = edit_distance(argument, candidate);
+inline fn consider_suggestion(std::string_view argument,
+                              std::string_view candidate,
+                              std::string &suggestion,
+                              std::size_t &best_distance) -> void {
+    const let distance = edit_distance(argument, candidate);
 
     if (distance < best_distance) {
         best_distance = distance;
@@ -280,12 +281,12 @@ inline auto consider_suggestion(std::string_view argument,
 }
 
 template <typename Command>
-auto option_suggestion(std::string_view, fields<>) -> std::string {
+fn option_suggestion(std::string_view, fields<>) -> std::string {
     return {};
 }
 
-template <typename Command, auto... Members>
-auto option_suggestion(std::string_view argument, fields<Members...>)
+template <typename Command, let... Members>
+fn option_suggestion(std::string_view argument, fields<Members...>)
     -> std::string {
     std::string suggestion;
     std::size_t best_distance = std::numeric_limits<std::size_t>::max();
@@ -307,17 +308,17 @@ auto option_suggestion(std::string_view argument, fields<Members...>)
 // value parsing
 
 template <typename T>
-auto parse_value(std::string_view, std::string_view) -> result<T> {
+fn parse_value(std::string_view, std::string_view) -> result<T> {
     static_assert(always_false<T>,
                   "cli::parse_value does not support this type");
 }
 
 template <>
-inline auto parse_value<int>(std::string_view argument, std::string_view text)
+inline fn parse_value<int>(std::string_view argument, std::string_view text)
     -> result<int> {
     int value{};
 
-    const auto [ptr, ec] =
+    const let[ptr, ec] =
         std::from_chars(text.data(), text.data() + text.size(), value);
 
     if (ec != std::errc{} || ptr != text.data() + text.size()) {
@@ -332,17 +333,17 @@ inline auto parse_value<int>(std::string_view argument, std::string_view text)
 }
 
 template <>
-inline auto parse_value<std::string>(std::string_view, std::string_view text)
+inline fn parse_value<std::string>(std::string_view, std::string_view text)
     -> result<std::string> {
     return std::string{text};
 }
 
 // argv parsing
 
-template <typename Command, auto Member>
-auto try_field(Command &command, std::string_view argument, int argc,
-               char **argv, int &index) -> result<bool> {
-    auto &field = command.*Member;
+template <typename Command, let Member>
+fn try_field(Command &command, std::string_view argument, int argc, char **argv,
+             int &index) -> result<bool> {
+    let &field = command.*Member;
 
     using field_type = std::remove_cvref_t<decltype(field)>;
 
@@ -361,7 +362,7 @@ auto try_field(Command &command, std::string_view argument, int argc,
         const std::string_view text = argv[++index];
 
         if constexpr (field_type::has_choices) {
-            const auto &choices = field_type::choice_info::values;
+            const let &choices = field_type::choice_info::values;
             const bool valid =
                 std::ranges::find(choices, text) != choices.end();
 
@@ -370,7 +371,7 @@ auto try_field(Command &command, std::string_view argument, int argc,
                 std::size_t best_distance =
                     std::numeric_limits<std::size_t>::max();
 
-                for (const auto choice : choices) {
+                for (const let choice : choices) {
                     consider_suggestion(text, choice, suggestion,
                                         best_distance);
                 }
@@ -387,7 +388,7 @@ auto try_field(Command &command, std::string_view argument, int argc,
             }
         }
 
-        auto parsed =
+        let parsed =
             parse_value<typename field_type::value_type>(argument, text);
 
         if (!parsed) {
@@ -404,16 +405,16 @@ auto try_field(Command &command, std::string_view argument, int argc,
 }
 
 template <typename Command>
-auto try_fields(Command &, fields<>, std::string_view, int, char **, int &)
+fn try_fields(Command &, fields<>, std::string_view, int, char **, int &)
     -> result<bool> {
     return false;
 }
 
-template <typename Command, auto Member, auto... Rest>
-auto try_fields(Command &command, fields<Member, Rest...>,
-                std::string_view argument, int argc, char **argv, int &index)
+template <typename Command, let Member, let... Rest>
+fn try_fields(Command &command, fields<Member, Rest...>,
+              std::string_view argument, int argc, char **argv, int &index)
     -> result<bool> {
-    auto matched =
+    let matched =
         try_field<Command, Member>(command, argument, argc, argv, index);
 
     if (!matched) {
@@ -429,9 +430,9 @@ auto try_fields(Command &command, fields<Member, Rest...>,
 
 // required validation
 
-template <typename Command, auto Member>
-auto validate_field(Command &command) -> result<bool> {
-    auto &field = command.*Member;
+template <typename Command, let Member>
+fn validate_field(Command &command) -> result<bool> {
+    let &field = command.*Member;
 
     using field_type = std::remove_cvref_t<decltype(field)>;
 
@@ -447,14 +448,13 @@ auto validate_field(Command &command) -> result<bool> {
 }
 
 template <typename Command>
-auto validate_fields(Command &, fields<>) -> result<bool> {
+fn validate_fields(Command &, fields<>) -> result<bool> {
     return true;
 }
 
-template <typename Command, auto Member, auto... Rest>
-auto validate_fields(Command &command, fields<Member, Rest...>)
-    -> result<bool> {
-    auto validated = validate_field<Command, Member>(command);
+template <typename Command, let Member, let... Rest>
+fn validate_fields(Command &command, fields<Member, Rest...>) -> result<bool> {
+    let validated = validate_field<Command, Member>(command);
 
     if (!validated) {
         return std::unexpected{std::move(validated.error())};
@@ -465,7 +465,7 @@ auto validate_fields(Command &command, fields<Member, Rest...>)
 
 // help generation
 
-template <typename T> constexpr auto value_name() -> std::string_view {
+template <typename T> constexpr fn value_name() -> std::string_view {
     if constexpr (std::same_as<T, int>) {
         return "INT";
     } else if constexpr (std::same_as<T, std::string>) {
@@ -475,8 +475,8 @@ template <typename T> constexpr auto value_name() -> std::string_view {
     }
 }
 
-inline auto append_padding(std::string &output, std::size_t current,
-                           std::size_t target) -> void {
+inline fn append_padding(std::string &output, std::size_t current,
+                         std::size_t target) -> void {
     if (current >= target) {
         output += ' ';
         return;
@@ -485,8 +485,8 @@ inline auto append_padding(std::string &output, std::size_t current,
     output.append(target - current, ' ');
 }
 
-template <typename Command, auto Member>
-auto append_help_field(std::string &output) -> void {
+template <typename Command, let Member>
+fn append_help_field(std::string &output) -> void {
     using field_type =
         std::remove_cvref_t<decltype(std::declval<Command>().*Member)>;
 
@@ -528,8 +528,8 @@ auto append_help_field(std::string &output) -> void {
     output += '\n';
 }
 
-template <typename Command, auto Member>
-auto append_fancy_help_field(std::string &output, bool required) -> void {
+template <typename Command, let Member>
+fn append_fancy_help_field(std::string &output, bool required) -> void {
     using field_type =
         std::remove_cvref_t<decltype(std::declval<Command>().*Member)>;
 
@@ -595,27 +595,27 @@ auto append_fancy_help_field(std::string &output, bool required) -> void {
 }
 
 template <typename Command>
-auto append_help_fields(std::string &, fields<>) -> void {}
+fn append_help_fields(std::string &, fields<>) -> void {}
 
-template <typename Command, auto Member, auto... Rest>
-auto append_help_fields(std::string &output, fields<Member, Rest...>) -> void {
+template <typename Command, let Member, let... Rest>
+fn append_help_fields(std::string &output, fields<Member, Rest...>) -> void {
     append_help_field<Command, Member>(output);
 
     append_help_fields<Command>(output, fields<Rest...>{});
 }
 
 template <typename Command>
-auto append_fancy_help_fields(std::string &, fields<>, bool) -> void {}
+fn append_fancy_help_fields(std::string &, fields<>, bool) -> void {}
 
-template <typename Command, auto Member, auto... Rest>
-auto append_fancy_help_fields(std::string &output, fields<Member, Rest...>,
-                              bool required) -> void {
+template <typename Command, let Member, let... Rest>
+fn append_fancy_help_fields(std::string &output, fields<Member, Rest...>,
+                            bool required) -> void {
     append_fancy_help_field<Command, Member>(output, required);
 
     append_fancy_help_fields<Command>(output, fields<Rest...>{}, required);
 }
 
-template <typename Command> auto command_name() -> std::string_view {
+template <typename Command> fn command_name() -> std::string_view {
     if constexpr (requires { Command::command_name; }) {
         return Command::command_name;
     } else {
@@ -623,7 +623,7 @@ template <typename Command> auto command_name() -> std::string_view {
     }
 }
 
-template <typename Command> auto vanilla_help_text() -> std::string {
+template <typename Command> fn vanilla_help_text() -> std::string {
     std::string output = "Usage: ";
 
     output += command_name<Command>();
@@ -648,7 +648,7 @@ template <typename Command> auto vanilla_help_text() -> std::string {
     return output;
 }
 
-template <typename Command> auto fancy_help_text() -> std::string {
+template <typename Command> fn fancy_help_text() -> std::string {
     constexpr std::string_view bold = "\033[1m";
     constexpr std::string_view blue = "\033[1;34m";
     constexpr std::string_view cyan = "\033[1;36m";
@@ -720,27 +720,40 @@ template <typename Command> auto fancy_help_text() -> std::string {
 }
 
 template <typename... Commands>
-auto append_commands(std::string &output, commands<Commands...>) -> void {
+fn append_commands(std::string &output, commands<Commands...>) -> void {
     constexpr std::string_view cyan = "\033[1;36m";
     constexpr std::string_view reset = "\033[0m";
+    std::size_t width = 0;
+    ((width = std::max(width, Commands::name.size())), ...);
+    width += 3;
 
     ((output += "     ", output += cyan, output += Commands::name,
-      append_padding(output, Commands::name.size(), 12), output += reset,
+      append_padding(output, Commands::name.size(), width), output += reset,
       output += Commands::description, output += '\n'),
      ...);
 }
 
 template <typename... Commands>
-auto append_vanilla_commands(std::string &output, commands<Commands...>)
-    -> void {
+fn append_vanilla_commands(std::string &output, commands<Commands...>) -> void {
+    std::size_t width = 0;
+    ((width = std::max(width, Commands::name.size())), ...);
+    width += 3;
+
     ((output += "  ", output += Commands::name,
-      append_padding(output, Commands::name.size(), 14),
+      append_padding(output, Commands::name.size(), width),
       output += Commands::description, output += '\n'),
      ...);
 }
 
 template <typename... Commands>
-auto command_suggestion(std::string_view argument, commands<Commands...>)
+fn command_column_width(commands<Commands...>) -> std::size_t {
+    std::size_t width = 0;
+    ((width = std::max(width, Commands::name.size())), ...);
+    return width + 3;
+}
+
+template <typename... Commands>
+fn command_suggestion(std::string_view argument, commands<Commands...>)
     -> std::string {
     std::string suggestion;
     std::size_t best_distance = std::numeric_limits<std::size_t>::max();
@@ -755,7 +768,7 @@ auto command_suggestion(std::string_view argument, commands<Commands...>)
     return suggestion;
 }
 
-inline auto command_line(int argc, char **argv) -> std::string {
+inline fn command_line(int argc, char **argv) -> std::string {
     std::string output;
 
     for (int index = 1; index < argc; ++index) {
@@ -773,7 +786,7 @@ inline auto command_line(int argc, char **argv) -> std::string {
 
 // public api
 
-template <typename Command> auto help_text() -> std::string {
+template <typename Command> fn help_text() -> std::string {
     if constexpr (requires { Command::help_style; }) {
         if constexpr (Command::help_style == help_menu_style::vanilla) {
             return detail::vanilla_help_text<Command>();
@@ -783,8 +796,7 @@ template <typename Command> auto help_text() -> std::string {
     return detail::fancy_help_text<Command>();
 }
 
-template <typename Command>
-auto parse(int argc, char **argv) -> result<Command> {
+template <typename Command> fn parse(int argc, char **argv) -> result<Command> {
     Command output{};
 
     for (int i = 1; i < argc; ++i) {
@@ -794,8 +806,8 @@ auto parse(int argc, char **argv) -> result<Command> {
             return std::unexpected{parse_error{help_requested{}}};
         }
 
-        auto matched = detail::try_fields(output, typename Command::fields{},
-                                          argument, argc, argv, i);
+        let matched = detail::try_fields(output, typename Command::fields{},
+                                         argument, argc, argv, i);
 
         if (!matched) {
             return std::unexpected{std::move(matched.error())};
@@ -810,8 +822,7 @@ auto parse(int argc, char **argv) -> result<Command> {
         }
     }
 
-    auto validated =
-        detail::validate_fields(output, typename Command::fields{});
+    let validated = detail::validate_fields(output, typename Command::fields{});
 
     if (!validated) {
         return std::unexpected{std::move(validated.error())};
@@ -820,7 +831,7 @@ auto parse(int argc, char **argv) -> result<Command> {
     return output;
 }
 
-template <typename Root> auto command_help_text() -> std::string {
+template <typename Root> fn command_help_text() -> std::string {
     constexpr std::string_view bold = "\033[1m";
     constexpr std::string_view blue = "\033[1;34m";
     constexpr std::string_view cyan = "\033[1;36m";
@@ -841,7 +852,11 @@ template <typename Root> auto command_help_text() -> std::string {
             output += "\nCommands:\n";
             detail::append_vanilla_commands(output,
                                             typename Root::subcommands{});
-            output += "\n  --help        Show this help message\n";
+            output += "\n  --help";
+            detail::append_padding(
+                output, std::string_view{"--help"}.size(),
+                detail::command_column_width(typename Root::subcommands{}));
+            output += "Show this help message\n";
             return output;
         }
     }
@@ -881,8 +896,11 @@ template <typename Root> auto command_help_text() -> std::string {
     output += "\n     ";
     output += cyan;
     output += "--help";
+    detail::append_padding(
+        output, std::string_view{"--help"}.size(),
+        detail::command_column_width(typename Root::subcommands{}));
     output += reset;
-    output += "\n         Show this message\n";
+    output += "Show this help message\n";
 
     return output;
 }
@@ -890,13 +908,13 @@ template <typename Root> auto command_help_text() -> std::string {
 namespace detail {
 
 template <typename Root>
-auto selected_command_help_text(std::string_view, commands<>) -> std::string {
+fn selected_command_help_text(std::string_view, commands<>) -> std::string {
     return command_help_text<Root>();
 }
 
 template <typename Root, typename Command, typename... Rest>
-auto selected_command_help_text(std::string_view selected,
-                                commands<Command, Rest...>) -> std::string {
+fn selected_command_help_text(std::string_view selected,
+                              commands<Command, Rest...>) -> std::string {
     if (selected == Command::name) {
         return help_text<typename Command::options_type>();
     }
@@ -907,7 +925,7 @@ auto selected_command_help_text(std::string_view selected,
 } // namespace detail
 
 template <typename Root>
-auto command_help_text(std::string_view selected) -> std::string {
+fn command_help_text(std::string_view selected) -> std::string {
     return detail::selected_command_help_text<Root>(
         selected, typename Root::subcommands{});
 }
@@ -915,7 +933,7 @@ auto command_help_text(std::string_view selected) -> std::string {
 namespace detail {
 
 template <typename Root, typename Variant>
-auto parse_selected_command(std::string_view argument, int, char **, commands<>)
+fn parse_selected_command(std::string_view argument, int, char **, commands<>)
     -> result<Variant> {
     return std::unexpected{parse_error{unknown_command{
         .argument = std::string{argument},
@@ -925,13 +943,13 @@ auto parse_selected_command(std::string_view argument, int, char **, commands<>)
 }
 
 template <typename Root, typename Variant, typename Command, typename... Rest>
-auto parse_selected_command(std::string_view argument, int argc, char **argv,
-                            commands<Command, Rest...>) -> result<Variant> {
+fn parse_selected_command(std::string_view argument, int argc, char **argv,
+                          commands<Command, Rest...>) -> result<Variant> {
     if (argument == Command::name) {
-        auto parsed = parse<typename Command::options_type>(argc - 1, argv + 1);
+        let parsed = parse<typename Command::options_type>(argc - 1, argv + 1);
 
         if (!parsed) {
-            if (auto *help = std::get_if<help_requested>(&parsed.error())) {
+            if (let *help = std::get_if<help_requested>(&parsed.error())) {
                 help->command = Command::name;
             }
 
@@ -949,7 +967,7 @@ auto parse_selected_command(std::string_view argument, int argc, char **argv,
 } // namespace detail
 
 template <typename Root>
-auto parse_command(int argc, char **argv)
+fn parse_command(int argc, char **argv)
     -> result<command_result_t<typename Root::subcommands>> {
     using variant_type = command_result_t<typename Root::subcommands>;
 
@@ -968,14 +986,13 @@ auto parse_command(int argc, char **argv)
 }
 
 template <typename Command>
-auto error_text(const parse_error &error, int argc, char **argv)
-    -> std::string {
-    const auto line = detail::command_line(argc, argv);
+fn error_text(const parse_error &error, int argc, char **argv) -> std::string {
+    const let line = detail::command_line(argc, argv);
     std::string token;
     std::string message;
 
     std::visit(
-        [&](const auto &value) {
+        [&](const let &value) {
             using error_type = std::remove_cvref_t<decltype(value)>;
 
             if constexpr (std::same_as<error_type, unknown_option>) {
@@ -1013,12 +1030,12 @@ auto error_text(const parse_error &error, int argc, char **argv)
         },
         error);
 
-    const auto column = token.empty() ? std::size_t{0} : line.find(token);
-    const auto start = column == std::string::npos ? std::size_t{0} : column;
-    const auto width =
+    const let column = token.empty() ? std::size_t{0} : line.find(token);
+    const let start = column == std::string::npos ? std::size_t{0} : column;
+    const let width =
         token.empty() ? std::max(line.size(), std::size_t{1}) : token.size();
 
-    constexpr auto selected_style = [] {
+    constexpr let selected_style = [] {
         if constexpr (requires { Command::help_style; }) {
             if constexpr (Command::help_style == help_menu_style::vanilla) {
                 return diagnostic::style::vanilla;
@@ -1046,17 +1063,16 @@ auto error_text(const parse_error &error, int argc, char **argv)
 namespace detail {
 
 template <typename Root>
-auto selected_command_error_text(std::string_view, const parse_error &error,
-                                 int argc, char **argv, commands<>)
+fn selected_command_error_text(std::string_view, const parse_error &error,
+                               int argc, char **argv, commands<>)
     -> std::string {
     return error_text<Root>(error, argc, argv);
 }
 
 template <typename Root, typename Command, typename... Rest>
-auto selected_command_error_text(std::string_view selected,
-                                 const parse_error &error, int argc,
-                                 char **argv, commands<Command, Rest...>)
-    -> std::string {
+fn selected_command_error_text(std::string_view selected,
+                               const parse_error &error, int argc, char **argv,
+                               commands<Command, Rest...>) -> std::string {
     if (selected == Command::name) {
         return error_text<typename Command::options_type>(error, argc, argv);
     }
@@ -1068,7 +1084,7 @@ auto selected_command_error_text(std::string_view selected,
 } // namespace detail
 
 template <typename Root>
-auto command_error_text(const parse_error &error, int argc, char **argv)
+fn command_error_text(const parse_error &error, int argc, char **argv)
     -> std::string {
     const std::string_view selected = argc > 1 ? argv[1] : "";
 

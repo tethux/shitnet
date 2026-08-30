@@ -1,5 +1,7 @@
 module;
 
+#include <shitnet/macros.h>
+
 #include <algorithm>
 #include <cstddef>
 #include <string>
@@ -24,7 +26,7 @@ struct message {
 
 namespace detail {
 
-auto render_vanilla(const message &value) -> std::string {
+fn render_vanilla(const message &value) -> std::string {
     std::string output = "Error: ";
     output += value.namespace_name;
     output += '\n';
@@ -50,7 +52,7 @@ auto render_vanilla(const message &value) -> std::string {
     return output;
 }
 
-auto render_fancy(const message &value) -> std::string {
+fn render_fancy(const message &value) -> std::string {
     constexpr std::string_view bold = "\033[1m";
     constexpr std::string_view red = "\033[1;31m";
     constexpr std::string_view blue = "\033[1;34m";
@@ -120,7 +122,7 @@ auto render_fancy(const message &value) -> std::string {
 
 } // namespace detail
 
-auto render(const message &value, style selected_style = style::fancy)
+fn render(const message &value, style selected_style = style::fancy)
     -> std::string {
     if (selected_style == style::vanilla) {
         return detail::render_vanilla(value);
