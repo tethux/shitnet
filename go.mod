@@ -1,4 +1,4 @@
-module github.com/0xveya/shitnet
+module github.com/tethux/shitnet
 
 go 1.26.4
 

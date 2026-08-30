@@ -11,8 +11,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/0xveya/shitnet"
 	"github.com/chzyer/readline"
+	"github.com/tethux/shitnet"
 )
 
 func main() {

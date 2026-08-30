@@ -29,7 +29,7 @@ import (
 	"fmt"
 	"net/netip"
 
-	"github.com/0xveya/shitnet/errs"
+	"github.com/tethux/shitnet/errs"
 )
 
 const maxFrameSize = 65536

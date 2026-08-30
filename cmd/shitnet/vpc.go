@@ -9,8 +9,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/0xveya/shitnet"
-	"github.com/0xveya/shitnet/internal/tap"
+	"github.com/tethux/shitnet"
+	"github.com/tethux/shitnet/internal/tap"
 )
 
 type VPC struct {
@@ -244,7 +244,7 @@ func (v *VPC) drainEvents() error {
 				reply.Sequence,
 			))
 			ping.Received++
-			if ping.Received < ping.Count {
+			if ping.Count == 0 || ping.Received < ping.Count {
 				ping.Sequence++
 				ping.timer = time.NewTimer(time.Second)
 				continue

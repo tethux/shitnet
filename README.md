@@ -23,13 +23,13 @@ mise run build
 ## Go API
 
 The binding API is documented with GoDoc. Its public reference will be available
-at [pkg.go.dev/github.com/0xveya/shitnet](https://pkg.go.dev/github.com/0xveya/shitnet)
+at [pkg.go.dev/github.com/tethux/shitnet](https://pkg.go.dev/github.com/tethux/shitnet)
 after pkg.go.dev indexes the module. Inspect it locally with:
 
 ```sh
-mise exec -- go doc github.com/0xveya/shitnet
-mise exec -- go doc github.com/0xveya/shitnet.Shitnet
-mise exec -- go doc github.com/0xveya/shitnet/errs
+mise exec -- go doc github.com/tethux/shitnet
+mise exec -- go doc github.com/tethux/shitnet.Shitnet
+mise exec -- go doc github.com/tethux/shitnet/errs
 ```
 
 The API is still experimental. Tethux will use this package once the stack and
@@ -93,10 +93,10 @@ ADDRESS   MAC
 ```
 
 `arp` reads the native C++ stack's learned table. `arp <ipv4>` looks up one
-entry and sends an ARP request when it is missing. `ping <ipv4>` sends five
-requests by default; `-c` selects another positive count. Ping performs ARP
-resolution itself when the entry is not already known and spaces requests one
-second apart.
+entry and sends an ARP request when it is missing. `ping <ipv4>` continues
+until Ctrl-C; `-c` selects a positive count. Ping performs ARP resolution
+itself when the entry is not already known and spaces requests one second
+apart.
 
 While the REPL is running, another terminal can test the inbound path:
 

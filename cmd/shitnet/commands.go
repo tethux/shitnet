@@ -19,7 +19,7 @@ var helpEntries = []helpEntry{
 	{command: "show", description: "show local interface configuration"},
 	{command: "arp", description: "show the learned ARP table"},
 	{command: "arp", arguments: "<ipv4>", description: "look up or request an ARP entry"},
-	{command: "ping", arguments: "<ipv4>", description: "send five ICMP echo requests"},
+	{command: "ping", arguments: "<ipv4>", description: "send ICMP until interrupted"},
 	{command: "ping", arguments: "-c N <ipv4>", description: "send N ICMP echo requests"},
 	{command: "help", description: "show this message"},
 	{command: "exit", description: "exit shitnet"},
@@ -114,10 +114,8 @@ type pingOptions struct {
 }
 
 func parsePing(args []string) (pingOptions, error) {
-	const defaultCount = 5
-
 	var addressText string
-	count := uint64(defaultCount)
+	var count uint64
 	switch {
 	case len(args) == 2:
 		addressText = args[1]
