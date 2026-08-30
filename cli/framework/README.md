@@ -3,6 +3,10 @@
 `cli` is a small declarative C++23 parser with typed options, multicall
 commands, generated help, reusable diagnostics, and typo suggestions.
 
+I built this framework to learn how typed command parsing could work in C++ and
+to test shitnet before the Go bindings existed. It remains as the native test
+CLI, but it is mostly irrelevant to the current Go API and REPL.
+
 ```cpp
 import cli;
 #include <shitnet/macros.h>

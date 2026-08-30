@@ -33,7 +33,8 @@ mise exec -- go doc github.com/tethux/shitnet/errs
 ```
 
 The API is still experimental. Tethux will use this package once the stack and
-its integration contracts are ready.
+its integration contracts are ready. The first experimental release is
+`v0.0.1`.
 
 ## Go REPL
 
