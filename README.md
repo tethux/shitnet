@@ -36,12 +36,25 @@ The API is still experimental. Tethux will use this package once the stack and
 its integration contracts are ready. The first experimental release is
 `v0.0.1`.
 
-## Go REPL
-
-Build the native library used by cgo:
+The file `pkgconfig/shitnet.pc` tells `pkg-config` where the installed headers
+and archive are and which libraries to link. Install a release build for an
+external Go consumer with:
 
 ```sh
-mise run dev
+mise exec -- xmake f -m release -y
+mise exec -- xmake build -y shitnet
+mise exec -- xmake install -o /path/to/prefix shitnet
+PKG_CONFIG_PATH=/path/to/prefix/lib/pkgconfig pkg-config --cflags --libs shitnet
+```
+
+Set `PKG_CONFIG_PATH` to that directory when building the consumer.
+
+## Go REPL
+
+Build and install the local native library used by cgo:
+
+```sh
+mise run build:native
 ```
 
 Create and configure a TAP owned by your user:
@@ -55,7 +68,7 @@ pkexec ip link set shitnet0 up
 Start the REPL without privilege escalation:
 
 ```sh
-mise exec -- go run ./cmd/shitnet
+PKG_CONFIG_PATH="$PWD/build/install/lib/pkgconfig" mise exec -- go run ./cmd/shitnet
 ```
 
 Available commands:
@@ -152,7 +165,7 @@ does the same in release mode.
 - `src/shitnet/api.cpp` is the C ABI boundary used by the CLI and future
   language bindings.
 - `include/shitnet/shitnet.h` is the binding-friendly public C interface.
-- `shitnet.go` exposes stack lifecycle, RX/TX, ARP, ICMP, and events to Go.
+- `shitnet.go` exposes the public Go API; `internal/binding` contains its native bindings.
 - `errs/` contains Go error categories and typed operation errors.
 - `cmd/shitnet/` contains the Go REPL and its single-owner packet pump.
 - `internal/tap/` owns the Go Linux TAP boundary.

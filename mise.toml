@@ -1,4 +1,5 @@
 [tools]
+"github:xmake-io/xmake" = "latest"
 clang-format = "latest"
 go = "1.26.5"
 golangci-lint = "2.10.1"
@@ -41,7 +42,7 @@ run = "find . -path ./build -prune -o -name '*.go' -print0 | xargs -0 goimports 
 [tasks."lint:go"]
 description = "lint Go code"
 depends = ["build:native", "lint:policy"]
-run = "golangci-lint run ./..."
+run = "PKG_CONFIG_PATH=\"$PWD/build/install/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}\" golangci-lint run ./..."
 
 [tasks."lint:policy"]
 description = "check Go repository policies"
@@ -54,11 +55,11 @@ run = "go tool repolint --fix ."
 [tasks."test:go"]
 description = "test Go code"
 depends = ["build:native"]
-run = "go test ./..."
+run = "PKG_CONFIG_PATH=\"$PWD/build/install/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}\" go test ./..."
 
 [tasks."build:native"]
 description = "build the native library for Go"
-run = "xmake build -y shitnet"
+run = "xmake build -y shitnet && xmake install -o \"$PWD/build/install\" shitnet"
 
 [tasks.clean]
 description = "remove generated build files"

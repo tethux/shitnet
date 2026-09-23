@@ -9,11 +9,15 @@ permissions:
   contents: read
 
 jobs:
-  policy:
-    runs-on: ubuntu-latest
+  lint:
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
+      - name: Install native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang pkg-config
       - uses: jdx/mise-action@v3
         with:
-          install_args: go
-      - run: mise run lint:policy
+          install_args: go golangci-lint github:xmake-io/xmake
+      - run: mise run lint:go

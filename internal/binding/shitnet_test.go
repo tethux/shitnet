@@ -1,15 +1,17 @@
-package shitnet
+package shitnet_test
 
 import (
 	"net/netip"
 	"testing"
+
+	shitnet "github.com/tethux/shitnet"
 )
 
 func TestICMPEchoRequestAfterARPLearning(t *testing.T) {
 	t.Parallel()
 
-	stack, newErr := New(Config{
-		MAC: MAC{0x02, 0x00, 0x00, 0x00, 0x00, 0x02},
+	stack, newErr := shitnet.New(shitnet.Config{
+		MAC: shitnet.MAC{0x02, 0x00, 0x00, 0x00, 0x00, 0x02},
 		IP:  netip.MustParseAddr("10.0.0.2"),
 	})
 	if newErr != nil {
@@ -18,7 +20,7 @@ func TestICMPEchoRequestAfterARPLearning(t *testing.T) {
 	t.Cleanup(stack.Close)
 
 	peerIP := netip.MustParseAddr("10.0.0.1")
-	peerMAC := MAC{0x02, 0x00, 0x00, 0x00, 0x00, 0x01}
+	peerMAC := shitnet.MAC{0x02, 0x00, 0x00, 0x00, 0x00, 0x01}
 	reply := make([]byte, 42)
 	copy(reply[6:12], peerMAC[:])
 	copy(reply[12:22], []byte{0x08, 0x06, 0x00, 0x01, 0x08, 0x00, 6, 4, 0, 2})
@@ -61,7 +63,7 @@ func TestICMPEchoRequestAfterARPLearning(t *testing.T) {
 	if requestErr != nil {
 		t.Fatalf("queue ICMP echo request: %v", requestErr)
 	}
-	if queued != QueueQueued {
+	if queued != shitnet.QueueQueued {
 		t.Fatalf("unexpected queue result: %v", queued)
 	}
 
@@ -97,7 +99,7 @@ func TestICMPEchoRequestAfterARPLearning(t *testing.T) {
 	if !echoEvent.Available || echoEvent.Event.ICMP == nil {
 		t.Fatalf("missing ICMP event: %+v", echoEvent)
 	}
-	if echoEvent.Event.Type != EventICMPEchoReply ||
+	if echoEvent.Event.Type != shitnet.EventICMPEchoReply ||
 		echoEvent.Event.ICMP.Source != peerIP ||
 		echoEvent.Event.ICMP.Identifier != 0x1234 ||
 		echoEvent.Event.ICMP.Sequence != 7 ||

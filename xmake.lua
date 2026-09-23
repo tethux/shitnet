@@ -15,6 +15,7 @@ add_files("src/shitnet/*.cppm")
 add_files("src/shitnet/*.cpp")
 add_includedirs("include", { public = true })
 add_headerfiles("include/(shitnet/*.h)")
+add_installfiles("pkgconfig/shitnet.pc", { prefixdir = "lib/pkgconfig" })
 
 target("shitnet-tests")
 set_kind("binary")
