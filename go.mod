@@ -9,7 +9,7 @@ require (
 
 require (
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
-	github.com/tethux/repolint v0.2.0 // indirect
+	github.com/tethux/repolint v0.2.1 // indirect
 )
 
 tool github.com/tethux/repolint/cmd/repolint
