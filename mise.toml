@@ -40,8 +40,16 @@ run = "find . -path ./build -prune -o -name '*.go' -print0 | xargs -0 goimports 
 
 [tasks."lint:go"]
 description = "lint Go code"
-depends = ["build:native"]
+depends = ["build:native", "lint:policy"]
 run = "golangci-lint run ./..."
+
+[tasks."lint:policy"]
+description = "check Go repository policies"
+run = "go tool repolint ."
+
+[tasks."fix:go"]
+description = "apply permitted Go policy fixes"
+run = "go tool repolint --fix ."
 
 [tasks."test:go"]
 description = "test Go code"

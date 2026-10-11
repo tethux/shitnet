@@ -1,0 +1,9 @@
+schema = 1
+
+[rules.structured-error]
+enabled = true
+paths = ["."]
+error_package = "errs"
+dialect = "operation"
+operation_type = "errs.Operation"
+fix = "off"
