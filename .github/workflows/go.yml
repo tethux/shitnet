@@ -16,7 +16,7 @@ jobs:
       - name: Install native build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang pkg-config
+          sudo apt-get install -y clang gcc pkg-config
       - uses: jdx/mise-action@v3
         with:
           install_args: go golangci-lint github:xmake-io/xmake

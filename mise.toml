@@ -1,5 +1,5 @@
 [tools]
-"github:xmake-io/xmake" = "latest"
+"github:xmake-io/xmake" = { version = "latest", bin = "xmake" }
 clang-format = "latest"
 go = "1.26.5"
 golangci-lint = "2.10.1"
