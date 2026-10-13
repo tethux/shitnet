@@ -238,7 +238,10 @@ func (s *Shitnet) ARPEntries() ([]ARPEntry, error) {
 		return nil, operationError("list ARP", errs.ErrClosed, nil)
 	}
 
-	count := int(C.shitnet_arp_count(s.ptr))
+	count, countErr := checkedNativeSize("list ARP", C.shitnet_arp_count(s.ptr), int(^uint(0)>>1))
+	if countErr != nil {
+		return nil, countErr
+	}
 	entries := make([]ARPEntry, 0, count)
 	for index := range count {
 		var address [4]C.uint8_t
@@ -331,8 +334,15 @@ func (s *Shitnet) PollEvent() (EventPoll, error) {
 			ip[index] = byte(value.source_ip[index])
 		}
 		icmp := ICMPEchoEvent{Source: netip.AddrFrom4(ip), Identifier: uint16(value.identifier), Sequence: uint16(value.sequence)}
-		icmp.Payload = make([]byte, int(value.payload_len))
+		size, sizeErr := checkedNativeSize("poll event", value.payload_len, maxFrameSize)
+		if sizeErr != nil {
+			return EventPoll{}, sizeErr
+		}
+		icmp.Payload = make([]byte, size)
 		if len(icmp.Payload) != 0 {
+			if value.payload == nil {
+				return EventPoll{}, operationError("poll event", errs.ErrInternal, nil)
+			}
 			//nolint:gocritic // cgo expands this helper call into an expression the linter misreads.
 			C.shitnet_copy_icmp_payload(&value, (*C.uint8_t)(&icmp.Payload[0]))
 		}
@@ -347,9 +357,7 @@ func (s *Shitnet) TXSize() (int, error) {
 		return 0, operationError("TX size", errs.ErrClosed, nil)
 	}
 
-	return int(
-		C.shitnet_tx_size(s.ptr),
-	), nil
+	return checkedNativeSize("TX size", C.shitnet_tx_size(s.ptr), int(^uint(0)>>1))
 }
 
 // PollTX returns the next queued frame when one is available.
@@ -386,8 +394,12 @@ func (s *Shitnet) PollTX() (TXPoll, error) {
 		return TXPoll{}, nil
 	}
 
+	writtenSize, writtenErr := checkedNativeSize("poll TX", written, len(buffer))
+	if writtenErr != nil {
+		return TXPoll{}, writtenErr
+	}
 	return TXPoll{
-		Frame:     buffer[:int(written)],
+		Frame:     buffer[:writtenSize],
 		Available: true,
 	}, nil
 }
@@ -415,4 +427,11 @@ func operationError(operation string, kind, cause error) error {
 		Kind:  kind,
 		Cause: cause,
 	}
+}
+
+func checkedNativeSize(operation string, value C.size_t, limit int) (int, error) {
+	if limit < 0 || uint64(value) > uint64(limit) {
+		return 0, operationError(operation, errs.ErrInternal, nil)
+	}
+	return int(value), nil
 }
