@@ -64,3 +64,25 @@ run = "xmake build -y shitnet && xmake install -o \"$PWD/build/install\" shitnet
 [tasks.clean]
 description = "remove generated build files"
 run = "xmake clean -a"
+
+[tasks."lint:architecture"]
+description = "Check repository contracts with repolint"
+depends = ["build:native"]
+run = '''
+root="$PWD"
+export PKG_CONFIG_PATH="$root/build/install/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+if [ -n "${REPOLINT_BIN:-}" ]; then
+  "$REPOLINT_BIN" --require-rules=package-boundaries,native-allocation,native-length,no-discarded-cleanup-error,subprocess-context,blocking-under-lock,suppression-policy --config "$root/.repolint-architecture.toml" "$root"
+else
+  source="${REPOLINT_SOURCE:-../repolint}"
+  if [ ! -f "$source/go.mod" ]; then
+    echo "repolint checkout missing: $source; set REPOLINT_SOURCE or REPOLINT_BIN" >&2
+    exit 2
+  fi
+  go -C "$source" run ./cmd/repolint --require-rules=package-boundaries,native-allocation,native-length,no-discarded-cleanup-error,subprocess-context,blocking-under-lock,suppression-policy --config "$root/.repolint-architecture.toml" "$root"
+fi
+'''
+
+[tasks.check]
+description = "Check Go policies, native contracts, and bindings"
+depends = ["lint:architecture", "lint:go", "test:go"]
