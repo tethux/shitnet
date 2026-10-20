@@ -32,9 +32,26 @@ mise exec -- go doc github.com/tethux/shitnet.Shitnet
 mise exec -- go doc github.com/tethux/shitnet/errs
 ```
 
-The API is still experimental. Tethux will use this package once the stack and
-its integration contracts are ready. The first experimental release is
-`v0.0.1`.
+The API is still experimental. Linux amd64 Go consumers use the bundled native
+archive and headers:
+
+```sh
+go get github.com/tethux/shitnet@latest
+```
+
+Build with cgo enabled and a C compiler and C++ runtime development files
+installed. Consumers do not need Xmake, pkg-config, or a separate Shitnet
+installation on Linux amd64. Other platforms use the native pkg-config package.
+
+After native changes, run `mise run package:go` and commit the updated archive
+before tagging a Go module release. `mise run test:go` exercises the bundled
+archive; `mise run test:go:local` exercises the installed development library
+through the `shitnet_local` build tag.
+
+`mise run release:snapshot` checks the Go bindings and packages the Linux amd64
+CLI, native library, headers, pkg-config file, and checksums without publishing.
+Pushing a new `v*` tag runs GoReleaser and publishes the GitHub release. Go
+consumers download the tagged module, including its bundled archive.
 
 The file `pkgconfig/shitnet.pc` tells `pkg-config` where the installed headers
 and archive are and which libraries to link. Install a release build for an

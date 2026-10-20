@@ -6,9 +6,11 @@
 *.o
 *.obj
 *.a
+!/internal/binding/libshitnet_linux_amd64.a
 *.so
 *.dylib
 *.dll
 *.exe
 .xmake/
 build/
+dist/

@@ -2,6 +2,7 @@
 "github:xmake-io/xmake" = { version = "latest", bin = "xmake" }
 clang-format = "latest"
 go = "1.26.5"
+goreleaser = "2.18.3"
 golangci-lint = "2.10.1"
 "go:mvdan.cc/gofumpt" = "0.9.2"
 "go:golang.org/x/tools/cmd/goimports" = "0.42.0"
@@ -54,8 +55,33 @@ run = "go tool repolint --fix ."
 
 [tasks."test:go"]
 description = "test Go code"
+run = "go test -a ./..."
+
+[tasks."test:go:local"]
+description = "test Go code against the local native build"
 depends = ["build:native"]
-run = "PKG_CONFIG_PATH=\"$PWD/build/install/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}\" go test ./..."
+run = 'PKG_CONFIG_PATH="$PWD/build/install/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" go test -a -tags shitnet_local ./...'
+
+[tasks."package:go"]
+description = "Rebuild the bundled Linux amd64 native archive"
+run = '''
+test "$(uname -s):$(uname -m)" = Linux:x86_64 || { echo 'Bundled Go archives support Linux amd64 only' >&2; exit 2; }
+xmake f -m release -y
+xmake build -y shitnet
+install -m644 build/linux/x86_64/release/libshitnet.a internal/binding/libshitnet_linux_amd64.a
+'''
+
+[tasks."release:check"]
+description = "Validate the GoReleaser configuration"
+run = "goreleaser check"
+
+[tasks."release:snapshot"]
+description = "Build release archives without publishing"
+run = "goreleaser release --snapshot --clean"
+
+[tasks.release]
+description = "Publish the current version tag"
+run = "goreleaser release --clean"
 
 [tasks."build:native"]
 description = "build the native library for Go"

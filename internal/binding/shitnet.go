@@ -1,7 +1,9 @@
 package shitnet
 
 /*
-#cgo pkg-config: shitnet
+#cgo linux,amd64,!shitnet_local CFLAGS: -I${SRCDIR}/../../include
+#cgo linux,amd64,!shitnet_local LDFLAGS: ${SRCDIR}/libshitnet_linux_amd64.a -lstdc++
+#cgo shitnet_local !linux !amd64 pkg-config: shitnet
 
 #include <shitnet/shitnet.h>
 

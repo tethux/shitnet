@@ -1,0 +1,43 @@
+version: 2
+project_name: shitnet
+
+before:
+  hooks:
+    - go test -a ./...
+    - install -Dm644 internal/binding/libshitnet_linux_amd64.a build/release/lib/libshitnet.a
+
+builds:
+  - id: shitnet
+    main: ./cmd/shitnet
+    binary: shitnet
+    env:
+      - CGO_ENABLED=1
+    goos: [linux]
+    goarch: [amd64]
+    flags: [-trimpath]
+    ldflags: [-s -w]
+
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - src: build/release/lib/libshitnet.a
+        dst: lib
+        strip_parent: true
+      - src: include/shitnet/*.h
+        dst: include/shitnet
+        strip_parent: true
+      - src: pkgconfig/shitnet.pc
+        dst: lib/pkgconfig
+        strip_parent: true
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+
+release:
+  prerelease: auto

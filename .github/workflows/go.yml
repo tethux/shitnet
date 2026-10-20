@@ -22,3 +22,4 @@ jobs:
           install_args: go golangci-lint github:xmake-io/xmake
       - run: mise run lint:go
       - run: mise run test:go
+      - run: mise run test:go:local
