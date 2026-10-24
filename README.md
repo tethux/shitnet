@@ -66,6 +66,64 @@ PKG_CONFIG_PATH=/path/to/prefix/lib/pkgconfig pkg-config --cflags --libs shitnet
 
 Set `PKG_CONFIG_PATH` to that directory when building the consumer.
 
+## Reusable Go console
+
+`github.com/tethux/shitnet/console` exposes the same networking commands as the
+REPL, without a terminal, TAP, shell, or service. Create one controller per live
+endpoint, borrowing the stack that the application already owns:
+
+```go
+controller := console.New(stack, config, "node1")
+// From a session goroutine, using a context canceled on detach:
+exit, err := controller.Execute(sessionCtx, "ping -c 3 10.0.0.1", output)
+```
+
+`Execute` accepts one whitespace-separated command line and writes text to an
+`io.Writer`. `exit` and `quit` return `true` so the caller can detach that session.
+They do not close the controller or endpoint. Independent sessions may call
+`Execute` concurrently with separate contexts and writers; one ping may be
+active per endpoint, otherwise `console.ErrPingPending` is returned. Errors
+support `errors.Is` and `errors.As` through `console.Operation`.
+
+The existing endpoint owner must service these cases alongside packet input:
+
+```go
+case request := <-controller.Requests():
+    controller.Handle(request)
+case <-controller.NextPing():
+    controller.Tick()
+case <-controller.Canceled():
+    controller.Cancel()
+```
+
+Serialize these owner hooks, `Event`, and `Close` with all native stack calls.
+Forward each event already drained by the owner to `controller.Event(event)`.
+Drain and transmit queued frames after `Handle`, `Tick`, and `Event` through the
+existing TX path. The controller never receives frames, polls TX/events, starts
+packet workers, or allocates another stack. See `cmd/shitnet/vpc.go` for the
+complete owner loop and `console/controller_test.go` for two native endpoints
+exchanging Ethernet frames without privileged networking.
+
+Cancel the session context on detach. Call `controller.Close()` on the owner
+when ending console access, before freeing the stack; it stops timers and wakes
+waiting commands with `console.ErrClosed`, retaining the endpoint. Transport
+writers must return promptly or be unblocked when their session ends: context
+cancellation cannot interrupt an arbitrary `Write`. Packet handling never waits
+for session output. Each command has a bounded output queue; a ping that fills
+it ends with `console.ErrOutputFull`.
+
+Ping retains the REPL's reply-paced behavior: it resolves ARP, sends the next
+request one second after a reply, and waits for context cancellation when an
+address or reply does not arrive. It does not implement loss timeouts or
+retransmissions. This API supplies commands only; transport authentication,
+line editing, session input, and endpoint lifetime belong to the caller.
+
+Run the focused native console and cancellation check:
+
+```nu
+mise exec -- go test -race ./console ./cmd/shitnet
+```
+
 ## Go REPL
 
 Build and install the local native library used by cgo:
@@ -184,6 +242,7 @@ does the same in release mode.
 - `include/shitnet/shitnet.h` is the binding-friendly public C interface.
 - `shitnet.go` exposes the public Go API; `internal/binding` contains its native bindings.
 - `errs/` contains Go error categories and typed operation errors.
+- `console/` contains reusable commands for an externally owned native endpoint.
 - `cmd/shitnet/` contains the Go REPL and its single-owner packet pump.
 - `internal/tap/` owns the Go Linux TAP boundary.
 - `cli/framework/` contains the declarative parser and diagnostic modules.

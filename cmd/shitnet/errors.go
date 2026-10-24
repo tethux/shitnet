@@ -5,16 +5,7 @@ import (
 	"strings"
 )
 
-var (
-	errCreateVPC      = errors.New("create VPC")
-	errInvalidIPv4    = errors.New("IPv4 address required")
-	errInvalidCount   = errors.New("positive ping count required")
-	errPingPending    = errors.New("another ping is pending")
-	errUnresolved     = errors.New("destination unresolved")
-	errUnknownCommand = errors.New("unknown command")
-	errUnknownRequest = errors.New("unknown request")
-	errUsage          = errors.New("invalid command usage")
-)
+var errCreateVPC = errors.New("create VPC")
 
 type operationError struct {
 	op     string

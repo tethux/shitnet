@@ -8,7 +8,7 @@ import (
 	"net/netip"
 	"os"
 	"os/signal"
-	"strings"
+	"sync"
 	"syscall"
 
 	"github.com/chzyer/readline"
@@ -65,12 +65,31 @@ func runREPL(
 	if openErr != nil {
 		return wrapError("open REPL", "", nil, openErr)
 	}
+	var closeOnce sync.Once
+	var closeErr error
+	closeReader := func() { closeOnce.Do(func() { closeErr = reader.Close() }) }
+	stopped := make(chan struct{})
+	watcherDone := make(chan struct{})
+	go func() {
+		defer close(watcherDone)
+		select {
+		case <-ctx.Done():
+			closeReader()
+		case <-stopped:
+		}
+	}()
 	defer func() {
-		resultErr = errors.Join(resultErr, reader.Close())
+		close(stopped)
+		<-watcherDone
+		closeReader()
+		resultErr = errors.Join(resultErr, closeErr)
 	}()
 
 	for {
 		line, readErr := reader.Readline()
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		if errors.Is(readErr, readline.ErrInterrupt) {
 			drainInterrupt(interrupts)
 			continue
@@ -83,7 +102,7 @@ func runREPL(
 			return wrapError("read REPL", "", nil, readErr)
 		}
 
-		exit, commandErr := executeCommand(ctx, vpc, interrupts, strings.Fields(line))
+		exit, commandErr := executeCommand(ctx, vpc.console, interrupts, line)
 		if commandErr != nil {
 			if errors.Is(commandErr, context.Canceled) && ctx.Err() == nil {
 				continue

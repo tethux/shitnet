@@ -3,6 +3,7 @@ package tap
 import (
 	"errors"
 	"os"
+	"sync"
 
 	"golang.org/x/sys/unix"
 )
@@ -10,8 +11,10 @@ import (
 const devicePath = "/dev/net/tun"
 
 type Device struct {
-	file *os.File
-	name string
+	file      *os.File
+	name      string
+	closeOnce sync.Once
+	closeErr  error
 }
 
 func Open(name string) (*Device, error) {
@@ -26,9 +29,17 @@ func Open(name string) (*Device, error) {
 		return nil, operationError("open", devicePath, ErrOpen, openErr)
 	}
 
-	// Linux file descriptors originate as non-negative ints despite os.File exposing uintptr.
-	//nolint:gosec // The descriptor is returned by open(2), whose return type is int.
-	configureErr := unix.IoctlIfreq(int(file.Fd()), unix.TUNSETIFF, request)
+	raw, rawErr := file.SyscallConn()
+	if rawErr != nil {
+		return nil, operationError("configure", name, ErrConfigure, errors.Join(rawErr, file.Close()))
+	}
+	var ioctlErr error
+	controlErr := raw.Control(func(fd uintptr) {
+		// Preserve Go's nonblocking descriptor so Close interrupts a pending Read.
+		//nolint:gosec // The descriptor is supplied by os.File's runtime-managed syscall connection.
+		ioctlErr = unix.IoctlIfreq(int(fd), unix.TUNSETIFF, request)
+	})
+	configureErr := errors.Join(controlErr, ioctlErr)
 	if configureErr != nil {
 		closeErr := file.Close()
 		return nil, operationError(
@@ -90,10 +101,10 @@ func (d *Device) Close() error {
 		return nil
 	}
 
-	file := d.file
-	d.file = nil
-	if closeErr := file.Close(); closeErr != nil {
-		return operationError("close", d.name, ErrClose, closeErr)
-	}
-	return nil
+	d.closeOnce.Do(func() {
+		if closeErr := d.file.Close(); closeErr != nil {
+			d.closeErr = operationError("close", d.name, ErrClose, closeErr)
+		}
+	})
+	return d.closeErr
 }
